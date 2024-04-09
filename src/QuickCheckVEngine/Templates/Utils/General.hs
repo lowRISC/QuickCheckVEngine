@@ -164,9 +164,10 @@ csrci csr_idx uimm = guardCSR csr_idx $ inst $ csrrci 0 csr_idx uimm
 --------------------------------------------------------------------------------
 
 -- | 'inUseReg' generates a register index from the "in use registers",
---   currently one of r0, r1, r2, r3, r4, r16, r17, r18, r19 and r20
+--   currently one of r0, r1, r2, r3, r4, r16, r17, r18, r19 and r20 when full 32 are available
 inUseReg :: Gen Integer
-inUseReg = oneof [choose (0, 4), choose (16, 20)]
+inUseReg = oneof [choose (0, 4), choose (11, 15)] -- TODO confirm this range is fine (RV32E)
+-- inUseReg = oneof [choose (0, 4), choose (16, 20)]
 -- Alternative implementation:
 --   frequency [
 --     (32, return 1)
@@ -187,7 +188,8 @@ dest = inUseReg
 
 -- | 'sbcRegs' generates an arbitrary register index for SBC use
 sbcRegs :: Gen Integer
-sbcRegs = choose(22, 29)
+sbcRegs = choose(9, 13) -- TODO confirm this range is fine (RV32E)
+-- sbcRegs = choose(22, 29)
 
 -- | 'csr' generates an arbitrary csr register index
 csr :: (CSRIdx -> Bool) -> Gen (Maybe CSRIdx)

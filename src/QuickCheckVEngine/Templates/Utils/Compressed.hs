@@ -52,9 +52,9 @@ module QuickCheckVEngine.Templates.Utils.Compressed (
 import Test.QuickCheck
 import QuickCheckVEngine.Templates.Utils.General
 
-regs = [0..31]
-regs_nz = [1..31]
-regs_nz_n2 = 1:[3..31]
+regs = [0..15]
+regs_nz = [1..15]
+regs_nz_n2 = 1:[3..15]
 -- for regs', map (+8) for actual integer regiter index
 regs' = [0..7]
 regs'_nz = [1..7]

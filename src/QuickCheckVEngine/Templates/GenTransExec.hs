@@ -129,7 +129,6 @@ genBSC_Jumps_Torture = random $ do
   imm <- bits 12
   longImm <- bits 20
   imm_jumps <- bits 7
-  -- sbcRegs can return on of the following: 22,23,24,25,26,27,28,29
   src1 <- sbcRegs
   src2 <- sbcRegs
   dest <- sbcRegs
