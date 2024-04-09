@@ -109,14 +109,14 @@ genRandomCHERITest = readParams $ \param -> random $ do
   longImm   <- (bits 20)
   fenceOp1  <- (bits 4)
   fenceOp2  <- (bits 4)
-  csrAddr   <- frequency [ (1, return (unsafe_csrs_indexFromName "mccsr"))
-                         , (1, return (unsafe_csrs_indexFromName "mcause")) ]
+  csrAddr   <- frequency [ -- (1, return (unsafe_csrs_indexFromName "mccsr")) -- CHERIoT lacks capability CSRs
+                           (1, return (unsafe_csrs_indexFromName "mcause")) ]
   srcScr    <- elements $ [0, 1, 28, 29, 30, 31] ++ (if has_s arch then [12, 13, 14, 15] else []) ++ [2]
-  let allowedCsrs = filter (flip member (csrFilter param)) [ unsafe_csrs_indexFromName "sepc"
-                                                           , unsafe_csrs_indexFromName "mepc" ]
-  let allowedCsrsRO = [ unsafe_csrs_indexFromName "scause"
-                      , unsafe_csrs_indexFromName "mcause" ]
-  srcCsr    <- if null allowedCsrs then return Nothing else Just <$> elements allowedCsrs
+  -- let allowedCsrs = filter (flip member (csrFilter param)) [ unsafe_csrs_indexFromName "sepc" -- CHERIoT lacks supervisor mode
+  --                                                          , unsafe_csrs_indexFromName "mepc" ] -- CHERIoT lacks mepc, uses mepcc instead
+  let allowedCsrsRO = [ -- unsafe_csrs_indexFromName "scause" -- CHERIoT lacks supervisor mode
+                        unsafe_csrs_indexFromName "mcause" ]
+  -- srcCsr    <- if null allowedCsrs then return Nothing else Just <$> elements allowedCsrs -- CHERIoT has no allowedCsrs left
   srcCsrRO  <- elements allowedCsrsRO
   return $ dist [ (5, legalLoad)
                 , (5, legalStore)
@@ -125,7 +125,7 @@ genRandomCHERITest = readParams $ \param -> random $ do
                 , (10, instUniform $ rv32_i srcAddr srcData dest imm longImm fenceOp1 fenceOp2)
                 , (10, instUniform $ rv32_xcheri arch srcAddr srcData srcScr imm mop dest)
                 , (10, inst $ cspecialrw dest srcScr srcAddr)
-                , (5, maybe mempty (\idx -> instUniform $ rv32_zicsr srcData dest idx mop) srcCsr)
+                -- , (5, maybe mempty (\idx -> instUniform $ rv32_zicsr srcData dest idx mop) srcCsr) -- CHERIoT has no allowedCsrs left
                 , (5, csrr dest srcCsrRO)
                 , (10, switchEncodingMode)
                 , (10, cspecialRWChain)
@@ -180,8 +180,8 @@ genCHERIinspection = random $ do
   longImm  <- bits 20
   fenceOp1 <- bits 3
   fenceOp2 <- bits 3
-  csrAddr  <- frequency [ (1, return (unsafe_csrs_indexFromName "mccsr"))
-                        , (1, return (unsafe_csrs_indexFromName "mcause"))
+  csrAddr  <- frequency [ -- (1, return (unsafe_csrs_indexFromName "mccsr")) -- CHERIoT lacks capability CSRs
+                          (1, return (unsafe_csrs_indexFromName "mcause"))
                         , (1, bits 12) ]
   return $ dist [ (1, instUniform $ rv32_xcheri_inspection srcAddr dest)
                 , (1, instUniform $ rv32_i srcAddr srcData dest imm longImm fenceOp1 fenceOp2) ] -- TODO add csr
@@ -195,8 +195,8 @@ genCHERIarithmetic = random $ do
   longImm  <- bits 20
   fenceOp1 <- bits 3
   fenceOp2 <- bits 3
-  csrAddr  <- frequency [ (1, return (unsafe_csrs_indexFromName "mccsr"))
-                        , (1, return (unsafe_csrs_indexFromName "mcause"))
+  csrAddr  <- frequency [ -- (1, return (unsafe_csrs_indexFromName "mccsr")) -- CHERIoT lacks capability CSRs
+                          (1, return (unsafe_csrs_indexFromName "mcause"))
                         , (1, bits 12) ]
   return $ dist [ (1, instUniform $ rv32_xcheri_arithmetic srcAddr srcData imm dest)
                 , (1, instUniform $ rv32_i srcAddr srcData dest imm longImm fenceOp1 fenceOp2) ] -- TODO add csr
@@ -211,8 +211,8 @@ genCHERImisc = random $ do
   fenceOp1 <- bits 3
   fenceOp2 <- bits 3
   srcScr   <- elements [0, 1, 28, 29, 30, 31]
-  csrAddr  <- frequency [ (1, return (unsafe_csrs_indexFromName "mccsr"))
-                        , (1, return (unsafe_csrs_indexFromName "mcause"))
+  csrAddr  <- frequency [ -- (1, return (unsafe_csrs_indexFromName "mccsr")) -- CHERIoT lacks capability CSRs
+                          (1, return (unsafe_csrs_indexFromName "mcause"))
                         , (1, bits 12) ]
   return $ dist [ (1, instUniform $ rv32_xcheri_misc srcAddr srcData srcScr imm dest)
                 , (1, instUniform $ rv32_i srcAddr srcData dest imm longImm fenceOp1 fenceOp2) ] -- TODO add csr
@@ -226,8 +226,8 @@ genCHERIcontrol = random $ do
   longImm  <- bits 20
   fenceOp1 <- bits 3
   fenceOp2 <- bits 3
-  csrAddr  <- frequency [ (1, return (unsafe_csrs_indexFromName "mccsr"))
-                        , (1, return (unsafe_csrs_indexFromName "mcause"))
+  csrAddr  <- frequency [ -- (1, return (unsafe_csrs_indexFromName "mccsr")) -- CHERIoT lacks capability CSRs
+                          (1, return (unsafe_csrs_indexFromName "mcause"))
                         , (1, bits 12) ]
   return $ dist [ (2, instUniform $ rv32_xcheri_control srcAddr srcData dest)
                 , (1, inst (csetbounds dest srcData srcAddr))

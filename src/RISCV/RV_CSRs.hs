@@ -151,21 +151,21 @@ csrs_map = -- User Trap Setup
            , (0xC81, "timeh")
            , (0xC82, "instreth") ]
         ++ [ (0xC80 + x, "hpmcounter" ++ show x ++ "h") | x <- hpmcounter_indices ]
-        ++ -- Supervisor Trap Setup
-           [ (0x100, "sstatus")
-           , (0x102, "sedeleg")
-           , (0x103, "sideleg")
-           , (0x104, "sie")
-           , (0x105, "stvec")
-           , (0x106, "scounteren") ]
-        ++ -- Supervisor Trap Handling
-           [ (0x140, "sscratch")
-           , (0x141, "sepc")
-           , (0x142, "scause")
-           , (0x143, "stval")
-           , (0x144, "sip") ]
-        ++ -- Supervisor Protection and Translation
-           [ (0x180, "satp") ]
+      --   ++ -- Supervisor Trap Setup
+      --      [ (0x100, "sstatus")      -- CHERIoT lacks supervisor mode
+      --      , (0x102, "sedeleg")      -- CHERIoT lacks supervisor mode
+      --      , (0x103, "sideleg")      -- CHERIoT lacks supervisor mode
+      --      , (0x104, "sie")          -- CHERIoT lacks supervisor mode
+      --      , (0x105, "stvec")        -- CHERIoT lacks supervisor mode
+      --      , (0x106, "scounteren") ] -- CHERIoT lacks supervisor mode
+      --   ++ -- Supervisor Trap Handling
+      --      [ (0x140, "sscratch")     -- CHERIoT lacks supervisor mode
+      --      , (0x141, "sepc")         -- CHERIoT lacks supervisor mode
+      --      , (0x142, "scause")       -- CHERIoT lacks supervisor mode
+      --      , (0x143, "stval")        -- CHERIoT lacks supervisor mode
+      --      , (0x144, "sip") ]        -- CHERIoT lacks supervisor mode
+      --   ++ -- Supervisor Protection and Translation
+      --      [ (0x180, "satp") ]       -- CHERIoT lacks supervisor mode
         -- TODO Hypervisor CSRs
         ++ -- Machine Information Registers
            [ (0xF11, "mvendorid")
@@ -175,15 +175,15 @@ csrs_map = -- User Trap Setup
         ++ -- Machine Trap Setup
            [ (0x300, "mstatus")
            , (0x301, "misa")
-           , (0x302, "medeleg")
-           , (0x303, "mideleg")
+         --   , (0x302, "medeleg") -- CHERIoT lacks trap delegation registers
+         --   , (0x303, "mideleg") -- CHERIoT lacks trap delegation registers
            , (0x304, "mie")
-           , (0x305, "mtvec")
+         --   , (0x305, "mtvec") -- CHERIoT lacks mtvec, uses mtcc instead
            , (0x306, "mcounteren")
            , (0x310, "mstatush") ]
         ++ -- Machine Trap Handling
            [ (0x340, "mscratch")
-           , (0x341, "mepc")
+         --   , (0x341, "mepc") -- CHERIoT lacks mepc, uses mepcc instead
            , (0x342, "mcause")
            , (0x343, "mtval")
            , (0x344, "mip") ]
@@ -200,10 +200,10 @@ csrs_map = -- User Trap Setup
         ++ [ (0xB80 + x, "mhpmcounter" ++ show x ++ "h") | x <- hpmcounter_indices ]
         ++ -- Machine Counter Setup
            [ (0x320, "mcountinhibit") ]
-        ++ -- CHERI CSRs
-           [ (0x8C0, "uccsr")
-           , (0x9C0, "sccsr")
-           , (0xBC0, "mccsr") ]
+      --   ++ -- CHERI CSRs
+      --      [ (0x8C0, "uccsr")   -- CHERIoT lacks capability CSRs
+      --      , (0x9C0, "sccsr")   -- CHERIoT lacks capability CSRs
+      --      , (0xBC0, "mccsr") ] -- CHERIoT lacks capability CSRs
         ++ map (\x -> (x, "mhpmevent" ++ show (x - (head mhpmevent_csr_indices) + 3)))
                mhpmevent_csr_indices
         -- TODO Debug/Trace Registers (shared with Debug Mode)
