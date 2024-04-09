@@ -57,6 +57,7 @@ import Data.Char (toLower)
 data ArchDesc = ArchDesc { has_xlen_32     :: Bool
                          , has_xlen_64     :: Bool
                          , has_i           :: Bool
+                         , has_e           :: Bool
                          , has_m           :: Bool
                          , has_s           :: Bool
                          , has_a           :: Bool
@@ -68,6 +69,7 @@ data ArchDesc = ArchDesc { has_xlen_32     :: Bool
                          , has_ihpm        :: Bool
                          , has_ifencei     :: Bool
                          , has_cheri       :: Bool
+                         , has_cheriot     :: Bool
                          , has_nocloadtags :: Bool }
 
 -- | The 'Show' instance for 'ArchDesc' renders an approximation of a RISC-V
@@ -77,6 +79,7 @@ instance Show ArchDesc where
                                               , ext has_xlen_64 "64" ]
                                        , not $ null x ]
                 ++ ext has_i "i"
+                ++ ext has_e "e"
                 ++ ext has_m "m"
                 ++ ext has_s "s"
                 ++ ext has_a "a"
@@ -88,6 +91,7 @@ instance Show ArchDesc where
                                               , ext has_ihpm "Zihpm"
                                               , ext has_ifencei "Zifencei"
                                               , ext has_cheri "Xcheri"
+                                              , ext has_cheriot "Xcheriot"
                                               , ext has_nocloadtags "Xnocloadtags" ]
                                        , not $ null x ]
             where ext pred str = if pred a then str else ""
@@ -96,6 +100,7 @@ instance Show ArchDesc where
 archDesc_null  = ArchDesc { has_xlen_32     = False
                           , has_xlen_64     = False
                           , has_i           = False
+                          , has_e           = False
                           , has_m           = False
                           , has_s           = False
                           , has_a           = False
@@ -107,6 +112,7 @@ archDesc_null  = ArchDesc { has_xlen_32     = False
                           , has_ihpm        = False
                           , has_ifencei     = False
                           , has_cheri       = False
+                          , has_cheriot     = False
                           , has_nocloadtags = False
                           }
 
@@ -115,6 +121,7 @@ archDesc_null  = ArchDesc { has_xlen_32     = False
 archDesc_rv32i = ArchDesc { has_xlen_32     = True
                           , has_xlen_64     = False
                           , has_i           = True
+                          , has_e           = False
                           , has_m           = False
                           , has_s           = False
                           , has_a           = False
@@ -126,6 +133,7 @@ archDesc_rv32i = ArchDesc { has_xlen_32     = True
                           , has_ihpm        = False
                           , has_ifencei     = False
                           , has_cheri       = False
+                          , has_cheriot     = False
                           , has_nocloadtags = False
                           }
 
@@ -135,6 +143,7 @@ fromString :: String -> ArchDesc
 fromString str = ArchDesc { has_xlen_32     = True
                           , has_xlen_64     = rv64
                           , has_i           = i
+                          , has_e           = e
                           , has_m           = m
                           , has_s           = s
                           , has_a           = a
@@ -145,13 +154,15 @@ fromString str = ArchDesc { has_xlen_32     = True
                           , has_icsr        = icsr
                           , has_ihpm        = ihpm
                           , has_ifencei     = ifencei
-                          , has_cheri       = cheri
+                          , has_cheri       = (cheri || cheriot) -- TODO separate cheriot
+                          , has_cheriot     = cheriot
                           , has_nocloadtags = nocloadtags
                           }
   where rawSplit = splitOneOf "_zx" (map toLower str)
         archStrings = filter (\x -> not $ null x) rawSplit
         rv64 = (head archStrings) =~ "rv64"
         i = (head archStrings =~ "i") || (head archStrings =~ "g")
+        e = head archStrings =~ "e"
         m = (head archStrings =~ "m") || (head archStrings =~ "g")
         s = (head archStrings =~ "s") || (head archStrings =~ "g")
         a = (head archStrings =~ "a") || (head archStrings =~ "g")
@@ -163,4 +174,5 @@ fromString str = ArchDesc { has_xlen_32     = True
         c = head archStrings =~ "c"
         n = head archStrings =~ "n"
         cheri = elem "cheri" archStrings
+        cheriot = elem "cheriot" archStrings
         nocloadtags = elem "nocloadtags" archStrings
