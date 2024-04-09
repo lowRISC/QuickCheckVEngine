@@ -53,8 +53,8 @@ randomTest = fp_prologue go
           longImm   <- (bits 20)
           fenceOp1  <- (bits 4)
           fenceOp2  <- (bits 4)
-          csrAddr   <- frequency [ (1, return (unsafe_csrs_indexFromName "mccsr"))
-                                 , (1, return (unsafe_csrs_indexFromName "mcause"))
+          csrAddr   <- frequency [ -- (1, return (unsafe_csrs_indexFromName "mccsr")) -- CHERIoT lacks capability CSRs
+                                   (1, return (unsafe_csrs_indexFromName "mcause"))
                                  , (1, bits 12) ]
           let test = dist [ (if remaining > 10 then 1 else 0, legalLoad)
                           , (if remaining > 10 then 1 else 0, legalStore)

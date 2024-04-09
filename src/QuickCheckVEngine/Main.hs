@@ -298,8 +298,8 @@ main = withSocketsDo $ do
       check_mcause_on_trap (trace :: Test TestResult) = if or (hasTrap <$> trace) then filterTest p trace <> wrapTest testSuffix else trace
         where hasTrap (_, a, b) = maybe False rvfiIsTrap a || maybe False rvfiIsTrap b
               testSuffix = noShrink $ singleSeq [ csrrs 1 (unsafe_csrs_indexFromName "mcause") 0
-                                                , csrrs 1 (unsafe_csrs_indexFromName "mtval" ) 0
-                                                , csrrs 1 (unsafe_csrs_indexFromName "mccsr" ) 0 ]
+                                                , csrrs 1 (unsafe_csrs_indexFromName "mtval" ) 0 ]
+                                                -- , csrrs 1 (unsafe_csrs_indexFromName "mccsr" ) 0 ] -- CHERIoT lacks capability CSRs
               p (DII_End _, _, _) = False
               p _ = True
   let askAndSave sourceFile contents m_trace testTrans = do

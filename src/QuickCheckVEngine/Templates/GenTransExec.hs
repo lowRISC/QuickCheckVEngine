@@ -80,8 +80,8 @@ genCSCDataTorture capReg tmpReg bitsReg sldReg nopermReg authReg = random $ do
   longImm  <- bits 20
   fenceOp1 <- bits 3
   fenceOp2 <- bits 3
-  csrAddr  <- frequency [ (1, return (unsafe_csrs_indexFromName "mccsr"))
-                        , (1, return (unsafe_csrs_indexFromName "mcause"))
+  csrAddr  <- frequency [ -- (1, return (unsafe_csrs_indexFromName "mccsr")) -- CHERIoT lacks capability CSRs
+                          (1, return (unsafe_csrs_indexFromName "mcause"))
                         , (1, bits 12) ]
   src1     <- frequency [ (1, return capReg), (1, return tmpReg), (1, return bitsReg), (1, return sldReg) ]
   src2     <- frequency [ (1, return capReg), (1, return tmpReg), (1, return bitsReg), (1, return sldReg) ]
