@@ -86,7 +86,8 @@ boundPCC :: Integer -> Integer -> Integer -> Integer -> Template
 boundPCC tmp1 tmp2 offset size =
   mconcat [ inst $ cspecialrw tmp1 0 0, -- Get PCC
             li64 tmp2 offset,
-            inst $ cincoffset tmp1 tmp1 tmp2, -- increment PCC
+            -- inst $ cincoffset tmp1 tmp1 tmp2, -- increment PCC -- CHERIoT replaces cincoffset with cincaddr
+            inst $ cincaddr tmp1 tmp1 tmp2, -- increment PCC      -- CHERIoT replaces cincoffset with cincaddr
             li64 tmp2 size,
             inst $ csetbounds tmp1 tmp1 tmp2, -- reduce bounds
             inst $ jalr_cap tmp1 tmp1 ] -- jump to new PCC
@@ -104,7 +105,8 @@ makeCap dst source tmp base len offset =
           , li64 tmp len
           , inst $ csetbounds dst dst tmp
           , li64 tmp offset
-          , inst $ cincoffset dst dst tmp ]
+          -- , inst $ cincoffset dst dst tmp ] -- CHERIoT replaces cincoffset with cincaddr
+          , inst $ cincaddr dst dst tmp ]      -- CHERIoT replaces cincoffset with cincaddr
 
 makeCap_core :: Integer -> Integer -> Integer -> Integer -> Template
 makeCap_core dst source tmp base =
@@ -121,8 +123,11 @@ makeShortCap = random $ do
   return $ instSeq [ csetboundsimmediate dst source len,
                      addi tmp 0 (Data.Bits.shift offset (-12)),
                      slli tmp tmp 12,
-                     csetoffset dst dst tmp,
-                     cincoffsetimmediate dst dst (offset Data.Bits..&. 0xfff)]
+                     -- TODO confirm that cincaddrimm is a suitable substitution for cincoffsetimmediate for whatever this test is doing
+                    --  csetoffset dst dst tmp, -- CHERIoT replaces cincoffset with cincaddr
+                     cincaddr dst dst tmp, -- TODO confirm that cincaddr is a suitable substitution for csetoffset for whatever this test is doing
+                    --  cincoffsetimmediate dst dst (offset Data.Bits..&. 0xfff)] -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+                     cincaddrimm dst dst (offset Data.Bits..&. 0xfff)]            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
 
 legalCapLoad :: Integer -> Integer -> Template
 legalCapLoad addrReg targetReg = random $ do
@@ -152,16 +157,23 @@ loadTags addrReg capReg = random $ do
                      , csetaddr addrReg addrReg tmpReg
                      , ccleartag tmpReg capReg ])
            <> maybeCapStore addrReg tmpReg capReg
-           <> inst (cincoffsetimmediate addrReg addrReg 16)
+           -- TODO confirm that cincaddrimm is a suitable substitution for cincoffsetimmediate for whatever this test is doing
+          --  <> inst (cincoffsetimmediate addrReg addrReg 16) -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+           <> inst (cincaddrimm addrReg addrReg 16)            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
            <> maybeCapStore addrReg tmpReg capReg
-           <> inst (cincoffsetimmediate addrReg addrReg 16)
+          --  <> inst (cincoffsetimmediate addrReg addrReg 16) -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+           <> inst (cincaddrimm addrReg addrReg 16)            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
            <> maybeCapStore addrReg tmpReg capReg
-           <> inst (cincoffsetimmediate addrReg addrReg 16)
+          --  <> inst (cincoffsetimmediate addrReg addrReg 16) -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+           <> inst (cincaddrimm addrReg addrReg 16)            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
            <> maybeCapStore addrReg tmpReg capReg
-           <> inst (cincoffsetimmediate addrReg addrReg 16)
+          --  <> inst (cincoffsetimmediate addrReg addrReg 16) -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+           <> inst (cincaddrimm addrReg addrReg 16)            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
            <> maybeCapStore addrReg tmpReg capReg
-           <> inst (cincoffsetimmediate addrReg addrReg 16)
-           <> inst (cincoffsetimmediate addrReg addrReg (4096 - (16 * 5)))
+          --  <> inst (cincoffsetimmediate addrReg addrReg 16) -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+           <> inst (cincaddrimm addrReg addrReg 16)            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+          --  <> inst (cincoffsetimmediate addrReg addrReg (4096 - (16 * 5))) -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+           <> inst (cincaddrimm addrReg addrReg (4096 - (16 * 5)))            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
            <> inst (cloadtags dataReg addrReg)
               where maybeCapStore addrReg capReg tmpReg = instUniform [ sq addrReg capReg 0
                                                                       , sq addrReg tmpReg 0 ]
@@ -171,6 +183,9 @@ loadRegion ::  Integer -> Integer -> Integer -> Integer -> Template -> Template
 loadRegion numLines capReg cacheLSize tmpReg insts =
    if numLines == 0 then insts
    else if numLines == 1 then mconcat [insts, inst (cload tmpReg capReg 0x0)]
+   -- TODO confirm that cincaddrimm is a suitable substitution for cincoffsetimmediate for whatever this test is doing
+  --  else loadRegion (numLines - 1) capReg cacheLSize tmpReg (mconcat [insts, inst (cload tmpReg capReg 0x0), inst (cincoffsetimmediate capReg capReg cacheLSize)]) -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+   else loadRegion (numLines - 1) capReg cacheLSize tmpReg (mconcat [insts, inst (cload tmpReg capReg 0x0), inst (cincaddrimm capReg capReg cacheLSize)])            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
 
 -- Only pure CHERI mode in CHERIoT
 -- switchEncodingMode :: Template

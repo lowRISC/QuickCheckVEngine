@@ -371,20 +371,25 @@ gen_csc_inst_verify = random $ do
                        , makeCap_core memReg2 authReg2 tmpReg 0x80007100
                        , inst $ cmove startReg jumpReg
                        , inst $ cstore jumpReg memReg 0x0c
-                       , inst $ cincoffsetimmediate tmpReg jumpReg 0x100
+                      --  , inst $ cincoffsetimmediate tmpReg jumpReg 0x100 -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+                       , inst $ cincaddrimm tmpReg jumpReg 0x100            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
                        , inst $ ccleartag tmpReg tmpReg
                        , inst $ cstore tmpReg memReg2 0x0c
                        , inst $ cload tmpReg memReg2 0x1f
                        , startSeq
                        , trainSeq
                        , inst $ cload tmpReg jumpReg 0x8
-                       , inst $ cincoffsetimmediate tmpReg jumpReg 0x40
+                      --  , inst $ cincoffsetimmediate tmpReg jumpReg 0x40 -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+                       , inst $ cincaddrimm tmpReg jumpReg 0x40            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
                        , inst $ cload tmpReg tmpReg 0x8
-                       , inst $ cincoffsetimmediate tmpReg jumpReg 0x80
+                      --  , inst $ cincoffsetimmediate tmpReg jumpReg 0x80 -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+                       , inst $ cincaddrimm tmpReg jumpReg 0x80            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
                        , inst $ cload tmpReg tmpReg 0x8
-                       , inst $ cincoffsetimmediate tmpReg jumpReg 0xc0
+                      --  , inst $ cincoffsetimmediate tmpReg jumpReg 0xc0 -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+                       , inst $ cincaddrimm tmpReg jumpReg 0xc0            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
                        , inst $ cload tmpReg tmpReg 0x8
-                       , inst $ cincoffsetimmediate tmpReg jumpReg 0x100
+                      --  , inst $ cincoffsetimmediate tmpReg jumpReg 0x100 -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+                       , inst $ cincaddrimm tmpReg jumpReg 0x100            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
                        , inst $ cload tmpReg tmpReg 0x8
                        , inst $ add pccReg zeroReg zeroReg
                        , inst $ cmove jumpReg startReg

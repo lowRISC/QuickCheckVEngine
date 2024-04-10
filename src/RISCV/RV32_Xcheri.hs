@@ -61,7 +61,7 @@ module RISCV.RV32_Xcheri (
 , cgetlen
 , cgettag
 , cgetsealed
-, cgetoffset
+-- , cgetoffset -- CHERIoT lacks cgetoffset instr
 , cgetflags
 , cgetaddr
 , cgethigh
@@ -69,11 +69,13 @@ module RISCV.RV32_Xcheri (
 , cunseal
 , candperm
 , csetflags
-, csetoffset
+-- , csetoffset -- CHERIoT lacks csetoffset instr
 , csetaddr
 , csethigh
-, cincoffset
-, cincoffsetimmediate
+-- , cincoffset -- CHERIoT replaces cincoffset with cincaddr
+, cincaddr
+-- , cincoffsetimmediate -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+, cincaddrimm            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
 , csetbounds
 , csetboundsexact
 , csetboundsimmediate
@@ -134,8 +136,9 @@ cgettag_raw                        =                                        "111
 cgettag rd cs1                     = encode cgettag_raw                                    cs1          rd
 cgetsealed_raw                     =                                        "1111111 00101 cs1[4:0] 000 rd[4:0] 1011011"
 cgetsealed rd cs1                  = encode cgetsealed_raw                                 cs1          rd
-cgetoffset_raw                     =                                        "1111111 00110 cs1[4:0] 000 rd[4:0] 1011011"
-cgetoffset rd cs1                  = encode cgetoffset_raw                                 cs1          rd
+-- CHERIoT lacks cgetoffset instr
+-- cgetoffset_raw                     =                                        "1111111 00110 cs1[4:0] 000 rd[4:0] 1011011"
+-- cgetoffset rd cs1                  = encode cgetoffset_raw                                 cs1          rd
 cgetflags_raw                      =                                        "1111111 00111 cs1[4:0] 000 rd[4:0] 1011011"
 cgetflags rd cs1                   = encode cgetflags_raw                                  cs1          rd
 cgetaddr_raw                       =                                        "1111111 01111 cs1[4:0] 000 rd[4:0] 1011011"
@@ -152,16 +155,23 @@ candperm_raw                       =                                        "000
 candperm cd cs1 rs2                = encode candperm_raw                             rs2      cs1          cd
 csetflags_raw                      =                                        "0001110 rs2[4:0] cs1[4:0] 000 cd[4:0] 1011011"
 csetflags cd cs1 rs2               = encode csetflags_raw                            rs2      cs1          cd
-csetoffset_raw                     =                                        "0001111 rs2[4:0] cs1[4:0] 000 cd[4:0] 1011011"
-csetoffset cd cs1 rs2              = encode csetoffset_raw                           rs2      cs1          cd
+-- CHERIoT lacks csetoffset instr
+-- csetoffset_raw                     =                                        "0001111 rs2[4:0] cs1[4:0] 000 cd[4:0] 1011011"
+-- csetoffset cd cs1 rs2              = encode csetoffset_raw                           rs2      cs1          cd
 csetaddr_raw                       =                                        "0010000 rs2[4:0] cs1[4:0] 000 cd[4:0] 1011011"
 csetaddr cd cs1 rs2                = encode csetaddr_raw                             rs2      cs1          cd
 csethigh_raw                       =                                        "0010110 rs2[4:0] cs1[4:0] 000 cd[4:0] 1011011"
 csethigh cd cs1 rs2                = encode csethigh_raw                             rs2      cs1          cd
-cincoffset_raw                     =                                        "0010001 rs2[4:0] cs1[4:0] 000 cd[4:0] 1011011"
-cincoffset cd cs1 rs2              = encode cincoffset_raw                           rs2      cs1          cd
-cincoffsetimmediate_raw            =                                        "imm[11:0] cs1[4:0] 001 cd[4:0] 1011011"
-cincoffsetimmediate cd cs1 imm     = encode cincoffsetimmediate_raw          imm       cs1          cd
+-- CHERIoT replaces cincoffset with cincaddr
+-- cincoffset_raw                     =                                        "0010001 rs2[4:0] cs1[4:0] 000 cd[4:0] 1011011"
+-- cincoffset cd cs1 rs2              = encode cincoffset_raw                           rs2      cs1          cd
+cincaddr_raw                       =                                        "0010001 rs2[4:0] cs1[4:0] 000 cd[4:0] 1011011"
+cincaddr cd cs1 rs2                = encode cincaddr_raw                             rs2      cs1          cd
+-- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+-- cincoffsetimmediate_raw            =                                        "imm[11:0] cs1[4:0] 001 cd[4:0] 1011011"
+-- cincoffsetimmediate cd cs1 imm     = encode cincoffsetimmediate_raw          imm       cs1          cd
+cincaddrimm_raw                    =                                        "imm[11:0] cs1[4:0] 001 cd[4:0] 1011011"
+cincaddrimm cd cs1 imm             = encode cincaddrimm_raw                  imm       cs1          cd
 csetbounds_raw                     =                                        "0001000 rs2[4:0] cs1[4:0] 000 cd[4:0] 1011011"
 csetbounds cd cs1 rs2              = encode csetbounds_raw                           rs2      cs1          cd
 csetboundsexact_raw                =                                        "0001001 rs2[4:0] cs1[4:0] 000 cd[4:0] 1011011"
@@ -335,16 +345,17 @@ rv32_xcheri_disass = [ cgetperm_raw                    --> prettyR_2op "cgetperm
                      , cgetlen_raw                     --> prettyR_2op "cgetlen"
                      , cgettag_raw                     --> prettyR_2op "cgettag"
                      , cgetsealed_raw                  --> prettyR_2op "cgetsealed"
-                     , cgetoffset_raw                  --> prettyR_2op "cgetoffset"
+                    --  , cgetoffset_raw                  --> prettyR_2op "cgetoffset" -- CHERIoT lacks cgetoffset instr
                      , cgetaddr_raw                    --> prettyR_2op "cgetaddr"
                      , cgethigh_raw                    --> prettyR_2op "cgethigh"
                      , cseal_raw                       --> prettyR "cseal"
                      , cunseal_raw                     --> prettyR "cunseal"
                      , candperm_raw                    --> prettyR "candperm"
-                     , csetoffset_raw                  --> prettyR "csetoffset"
+                    --  , csetoffset_raw                  --> prettyR "csetoffset" -- CHERIoT lacks csetoffset instr
                      , csetaddr_raw                    --> prettyR "csetaddr"
                      , csethigh_raw                    --> prettyR "csethigh"
-                     , cincoffset_raw                  --> prettyR "cincoffset"
+                    --  , cincoffset_raw                  --> prettyR "cincoffset" -- CHERIoT replaces cincoffset with cincaddr
+                     , cincaddr_raw                    --> prettyR "cincaddr"      -- CHERIoT replaces cincoffset with cincaddr
                      , csetbounds_raw                  --> prettyR "csetbounds"
                      , csetboundsexact_raw             --> prettyR "csetboundsexact"
                      , cbuildcap_raw                   --> prettyR "cbuildcap"
@@ -353,7 +364,8 @@ rv32_xcheri_disass = [ cgetperm_raw                    --> prettyR_2op "cgetperm
                      , csealentry_raw                  --> prettyR_2op "csealentry"
                      , cloadtags_raw                   --> prettyR_2op "cloadtags"
                      , ccleartag_raw                   --> prettyR_2op "ccleartag"
-                     , cincoffsetimmediate_raw         --> prettyI "cincoffsetimmediate"
+                    --  , cincoffsetimmediate_raw         --> prettyI "cincoffsetimmediate" -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+                     , cincaddrimm_raw                 --> prettyI "cincaddrimm"            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
                      , csetboundsimmediate_raw         --> prettyI "csetboundsimmediate"
                     --  , ctoptr_raw                      --> prettyR "ctoptr" -- CHERIoT lacks ctoptr instr
                     --  , cfromptr_raw                    --> prettyR "cfromptr" -- CHERIoT lacks cfromptr instr
@@ -397,17 +409,18 @@ rv32_xcheri_extract = [ cgetperm_raw                    --> extract_1op cgetperm
                       , cgetlen_raw                     --> extract_1op cgetlen_raw
                       , cgettag_raw                     --> extract_1op cgettag_raw
                       , cgetsealed_raw                  --> extract_1op cgetsealed_raw
-                      , cgetoffset_raw                  --> extract_1op cgetoffset_raw
+                      -- , cgetoffset_raw                  --> extract_1op cgetoffset_raw -- CHERIoT lacks cgetoffset instr
                       , cgetflags_raw                   --> extract_1op cgetflags_raw
                       , cgetaddr_raw                    --> extract_1op cgetaddr_raw
                       , cgethigh_raw                    --> extract_1op cgethigh_raw
                       , cseal_raw                       --> extract_2op cseal_raw
                       , cunseal_raw                     --> extract_2op cunseal_raw
                       , candperm_raw                    --> extract_2op candperm_raw
-                      , csetoffset_raw                  --> extract_2op csetoffset_raw
+                      -- , csetoffset_raw                  --> extract_2op csetoffset_raw -- CHERIoT lacks csetoffset instr
                       , csetaddr_raw                    --> extract_2op csetaddr_raw
                       , csethigh_raw                    --> extract_2op csethigh_raw
-                      , cincoffset_raw                  --> extract_2op cincoffset_raw
+                      -- , cincoffset_raw                  --> extract_2op cincoffset_raw -- CHERIoT replaces cincoffset with cincaddr
+                      , cincaddr_raw                    --> extract_2op cincaddr_raw      -- CHERIoT replaces cincoffset with cincaddr
                       , csetbounds_raw                  --> extract_2op csetbounds_raw
                       , csetboundsexact_raw             --> extract_2op csetboundsexact_raw
                       , cbuildcap_raw                   --> extract_2op cbuildcap_raw
@@ -416,7 +429,8 @@ rv32_xcheri_extract = [ cgetperm_raw                    --> extract_1op cgetperm
                       , csealentry_raw                  --> extract_1op csealentry_raw
                       , cloadtags_raw                   --> extract_1op cloadtags_raw
                       , ccleartag_raw                   --> extract_1op ccleartag_raw
-                      , cincoffsetimmediate_raw         --> extract_imm cincoffsetimmediate_raw
+                      -- , cincoffsetimmediate_raw         --> extract_imm cincoffsetimmediate_raw -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+                      , cincaddrimm_raw                 --> extract_imm cincaddrimm_raw            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
                       , csetboundsimmediate_raw         --> extract_imm csetboundsimmediate_raw
                       -- , ctoptr_raw                      --> extract_2op ctoptr_raw -- CHERIoT lacks ctoptr instr
                       -- , cfromptr_raw                    --> extract_2op cfromptr_raw -- CHERIoT lacks cfromptr instr
@@ -478,7 +492,7 @@ shrink_cap cs cd = [ecall,
                     cgetbase cd cs,
                     cgetlen cd cs,
                     cgettag cd cs,
-                    cgetoffset cd cs,
+                    -- cgetoffset cd cs, -- CHERIoT lacks cgetoffset instr
                     cgetflags cd cs
                    ]
 
@@ -516,17 +530,18 @@ rv32_xcheri_shrink = [ cgetperm_raw                    --> shrink_cgetperm
                      , cgetlen_raw                     --> shrink_cgetlen
                      , cgettag_raw                     --> shrink_cgettag
                      , cgetsealed_raw                  --> shrink_cgetsealed
-                     , cgetoffset_raw                  --> shrink_cgetoffset
+                    --  , cgetoffset_raw                  --> shrink_cgetoffset -- CHERIoT lacks cgetoffset instr
                      , cgetflags_raw                   --> shrink_cgetflags
                      , cgetaddr_raw                    --> shrink_cgetaddr
                      , cgethigh_raw                    --> shrink_cgethigh
                      , cseal_raw                       --> shrink_capcap
                      , cunseal_raw                     --> shrink_capcap
                      , candperm_raw                    --> shrink_capint
-                     , csetoffset_raw                  --> shrink_capint
+                    --  , csetoffset_raw                  --> shrink_capint -- CHERIoT lacks csetoffset instr
                      , csetaddr_raw                    --> shrink_capint
                      , csethigh_raw                    --> shrink_capint
-                     , cincoffset_raw                  --> shrink_capint
+                    --  , cincoffset_raw                  --> shrink_capint -- CHERIoT replaces cincoffset with cincaddr
+                     , cincaddr_raw                    --> shrink_capint    -- CHERIoT replaces cincoffset with cincaddr
                      , csetbounds_raw                  --> shrink_capint
                      , csetboundsexact_raw             --> shrink_capint
                      , cbuildcap_raw                   --> shrink_capcap
@@ -534,7 +549,8 @@ rv32_xcheri_shrink = [ cgetperm_raw                    --> shrink_cgetperm
                      , ccseal_raw                      --> shrink_capcap
                      , csealentry_raw                  --> shrink_cap
                      , ccleartag_raw                   --> shrink_cap
-                     , cincoffsetimmediate_raw         --> shrink_capimm
+                    --  , cincoffsetimmediate_raw         --> shrink_capimm -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+                     , cincaddrimm_raw                 --> shrink_capimm    -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
                      , csetboundsimmediate_raw         --> shrink_capimm
                     --  , ctoptr_raw                      --> shrink_capcap -- CHERIoT lacks ctoptr instr
                     --  , cfromptr_raw                    --> shrink_cfromptr -- CHERIoT lacks cfromptr instr
@@ -564,7 +580,7 @@ rv32_xcheri_inspection src dest = [ cgetperm                    dest src
                                   , cgetlen                     dest src
                                   , cgettag                     dest src
                                   , cgetsealed                  dest src
-                                  , cgetoffset                  dest src
+                                  -- , cgetoffset                  dest src -- CHERIoT lacks cgetoffset instr
                                   , cgetaddr                    dest src
                                   , cgethigh                    dest src
                                   , cgetflags                   dest src
@@ -574,14 +590,16 @@ rv32_xcheri_inspection src dest = [ cgetperm                    dest src
 -- | List of cheri arithmetic instructions
 rv32_xcheri_arithmetic :: Integer -> Integer -> Integer -> Integer -> [Instruction]
 rv32_xcheri_arithmetic src1 src2 imm dest =
-  [ csetoffset          dest src1 src2
-  , csetaddr            dest src1 src2
+  [ -- csetoffset          dest src1 src2 -- CHERIoT lacks csetoffset instr
+    csetaddr            dest src1 src2
   , csethigh            dest src1 src2
-  , cincoffset          dest src1 src2
+  -- , cincoffset          dest src1 src2 -- CHERIoT replaces cincoffset with cincaddr
+  , cincaddr            dest src1 src2    -- CHERIoT replaces cincoffset with cincaddr
   , csetbounds          dest src1 src2
   , csetboundsexact     dest src1 src2
   , csetboundsimmediate dest src1      imm
-  , cincoffsetimmediate dest src1      imm
+  -- , cincoffsetimmediate dest src1      imm -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+  , cincaddrimm         dest src1      imm
   -- , ctoptr              dest src1 src2 -- CHERIoT lacks ctoptr instr
   -- , cfromptr            dest src1 src2 -- CHERIoT lacks cfromptr instr
   , csub                dest src1 src2

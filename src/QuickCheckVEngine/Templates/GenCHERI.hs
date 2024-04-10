@@ -74,7 +74,7 @@ capDecodeTest = random $ do
                     inst $ sw 1 2 12,
                     inst $ lq 2 1 0,
                     inst $ cgetlen 6 2,
-                    inst $ cgetoffset 6 2,
+                    -- inst $ cgetoffset 6 2, -- CHERIoT lacks cgetoffset instr
                     inst $ cgetbase 6 2,
                     inst $ cgetaddr 6 2,
                     inst $ cgethigh 6 2,
