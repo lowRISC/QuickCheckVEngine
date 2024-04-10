@@ -122,7 +122,7 @@ genRandomCHERITest = readParams $ \param -> random $ do
                 , (5, csrr dest srcCsrRO)
                 , (10, switchEncodingMode)
                 , (10, cspecialRWChain)
-                , (10, randomCInvoke srcAddr srcData tmpReg tmpReg2)
+                -- , (10, randomCInvoke srcAddr srcData tmpReg tmpReg2) -- CHERIoT lacks cinvoke instr
                 , (10, makeShortCap)
                 , (5, clearASR tmpReg tmpReg2)
                 , (5, boundPCC tmpReg tmpReg2 imm longImm)

@@ -33,8 +33,8 @@
 --
 
 module QuickCheckVEngine.Templates.Utils.CHERI (
-  randomCInvoke
-, boundPCC
+  -- randomCInvoke
+  boundPCC
 , clearASR
 , makeCap
 , makeCap_core
@@ -59,26 +59,28 @@ import InstrCodec
 import QuickCheckVEngine.Template
 import QuickCheckVEngine.Templates.Utils.General
 
-randomCInvoke :: Integer -> Integer -> Integer -> Integer -> Template
-randomCInvoke cs1 cs2 typeReg tmpReg =
-     dist [ (1, instSeq [ addi 0 tmpReg 0xffd
-                        , candperm cs1 cs1 tmpReg ])
-          , (9, mempty) ] -- clear X perm?
-  <> dist [ (9, instSeq [ addi tmpReg 0 0xffd
-                        , candperm cs2 cs2 tmpReg ])
-          , (1, mempty) ]
-  <> dist [ (1, instSeq [ addi tmpReg 0 0xeff
-                        , candperm cs1 cs1 tmpReg ])
-          , (9, mempty) ] -- clear CInvoke perm?
-  <> dist [ (1, instSeq [ addi tmpReg 0 0xeff
-                        , candperm cs2 cs2 tmpReg ])
-          , (9, mempty) ]
-  <> dist [ (9, inst $ cseal cs1 cs1 typeReg)
-          , (1, mempty) ] -- seal?
-  <> dist [ (9, inst $ cseal cs2 cs2 typeReg)
-          , (1, mempty) ]
-  <> instSeq [ cinvoke cs2 cs1
-             , cmove 31 1 ]
+-- CHERIoT lacks cinvoke instr
+-- TODO rework to use alternative instructions to cinvoke
+-- randomCInvoke :: Integer -> Integer -> Integer -> Integer -> Template
+-- randomCInvoke cs1 cs2 typeReg tmpReg =
+--      dist [ (1, instSeq [ addi 0 tmpReg 0xffd
+--                         , candperm cs1 cs1 tmpReg ])
+--           , (9, mempty) ] -- clear X perm?
+--   <> dist [ (9, instSeq [ addi tmpReg 0 0xffd
+--                         , candperm cs2 cs2 tmpReg ])
+--           , (1, mempty) ]
+--   <> dist [ (1, instSeq [ addi tmpReg 0 0xeff
+--                         , candperm cs1 cs1 tmpReg ])
+--           , (9, mempty) ] -- clear CInvoke perm?
+--   <> dist [ (1, instSeq [ addi tmpReg 0 0xeff
+--                         , candperm cs2 cs2 tmpReg ])
+--           , (9, mempty) ]
+--   <> dist [ (9, inst $ cseal cs1 cs1 typeReg)
+--           , (1, mempty) ] -- seal?
+--   <> dist [ (9, inst $ cseal cs2 cs2 typeReg)
+--           , (1, mempty) ]
+--   <> instSeq [ cinvoke cs2 cs1
+--              , cmove 31 1 ]
 
 boundPCC :: Integer -> Integer -> Integer -> Integer -> Template
 boundPCC tmp1 tmp2 offset size =

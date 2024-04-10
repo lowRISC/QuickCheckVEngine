@@ -83,12 +83,12 @@ module RISCV.RV32_Xcheri (
 , ccseal
 , csealentry
 , cloadtags
-, ctoptr
-, cfromptr
+-- , ctoptr -- CHERIoT lacks ctoptr instr
+-- , cfromptr -- CHERIoT lacks cfromptr instr
 , csub
 , cmove
 , jalr_cap
-, cinvoke
+-- , cinvoke -- CHERIoT lacks cinvoke instr
 , ctestsubset
 , cspecialrw
 , clear
@@ -183,10 +183,12 @@ cloadtags rd cs1                   = encode cloadtags_raw                       
 
 
 -- Capability Pointer Arithmetic
-ctoptr_raw                         =                                        "0010010 cs2[4:0] cs1[4:0] 000 cd[4:0] 1011011"
-ctoptr cd cs1 cs2                  = encode ctoptr_raw                               cs2      cs1          cd
-cfromptr_raw                       =                                        "0010011 rs2[4:0] cs1[4:0] 000 cd[4:0] 1011011"
-cfromptr cd cs1 rs2                = encode cfromptr_raw                             rs2      cs1          cd
+-- CHERIoT lacks ctoptr instr
+-- ctoptr_raw                         =                                        "0010010 cs2[4:0] cs1[4:0] 000 cd[4:0] 1011011"
+-- ctoptr cd cs1 cs2                  = encode ctoptr_raw                               cs2      cs1          cd
+-- CHERIoT lacks cfromptr instr
+-- cfromptr_raw                       =                                        "0010011 rs2[4:0] cs1[4:0] 000 cd[4:0] 1011011"
+-- cfromptr cd cs1 rs2                = encode cfromptr_raw                             rs2      cs1          cd
 csub_raw                           =                                        "0010100 cs2[4:0] cs1[4:0] 000 cd[4:0] 1011011"
 csub cd cs1 cs2                    = encode csub_raw                                 cs2      cs1          cd
 cmove_raw                          =                                        "1111111 01010 cs1[4:0] 000 cd[4:0] 1011011"
@@ -198,8 +200,9 @@ cspecialrw cd cSP cs1              = encode cspecialrw_raw                      
 -- Control Flow
 jalr_cap_raw                       =                                        "1111111 01100 cs1[4:0] 000 cd[4:0] 1011011"
 jalr_cap cd cs1                    = encode jalr_cap_raw                                      cs1          cd
-cinvoke_raw                        =                                        "1111110 cs2[4:0] cs1[4:0] 000 00001 1011011"
-cinvoke cs2 cs1                    = encode cinvoke_raw                              cs2      cs1
+-- CHERIoT lacks cinvoke instr
+-- cinvoke_raw                        =                                        "1111110 cs2[4:0] cs1[4:0] 000 00001 1011011"
+-- cinvoke cs2 cs1                    = encode cinvoke_raw                              cs2      cs1
 
 -- Assertion
 ctestsubset_raw                    =                                        "0100000 cs2[4:0] cs1[4:0] 000 rd[4:0] 1011011"
@@ -352,13 +355,13 @@ rv32_xcheri_disass = [ cgetperm_raw                    --> prettyR_2op "cgetperm
                      , ccleartag_raw                   --> prettyR_2op "ccleartag"
                      , cincoffsetimmediate_raw         --> prettyI "cincoffsetimmediate"
                      , csetboundsimmediate_raw         --> prettyI "csetboundsimmediate"
-                     , ctoptr_raw                      --> prettyR "ctoptr"
-                     , cfromptr_raw                    --> prettyR "cfromptr"
+                    --  , ctoptr_raw                      --> prettyR "ctoptr" -- CHERIoT lacks ctoptr instr
+                    --  , cfromptr_raw                    --> prettyR "cfromptr" -- CHERIoT lacks cfromptr instr
                      , csub_raw                        --> prettyR "csub"
                      , cspecialrw_raw                  --> pretty_cspecialrw "cspecialrw"
                      , cmove_raw                       --> prettyR_2op "cmove"
                      , jalr_cap_raw                       --> prettyR_2op "jalr_cap"
-                     , cinvoke_raw                     --> pretty_2src "cinvoke"
+                    --  , cinvoke_raw                     --> pretty_2src "cinvoke" -- CHERIoT lacks cinvoke instr
                      , ctestsubset_raw                 --> prettyR "ctestsubset"
                      , clear_raw                       --> pretty_reg_clear "clear"
                      , cclear_raw                      --> pretty_reg_clear "cclear"
@@ -380,8 +383,9 @@ extract_cspecialrw idx rs1 rd = (False, Nothing, Just rs1, Just rd, \x y z -> en
 extract_cmove :: Integer -> Integer -> ExtractedRegs
 extract_cmove rs1 rd = (True, Nothing, Just rs1, Just rd, \x y z -> encode cmove_raw y z)
 
-extract_cinvoke :: Integer -> Integer -> ExtractedRegs
-extract_cinvoke rs2 rs1 = (False, Just rs2, Just rs1, Just 31, \x y z -> encode cinvoke_raw x y)
+-- CHERIoT lacks cinvoke instr
+-- extract_cinvoke :: Integer -> Integer -> ExtractedRegs
+-- extract_cinvoke rs2 rs1 = (False, Just rs2, Just rs1, Just 31, \x y z -> encode cinvoke_raw x y)
 
 extract_cstore :: Integer -> Integer -> Integer -> ExtractedRegs
 extract_cstore rs2 rs1 mop = (False, Just rs2, Just rs1, Nothing, \x y z -> encode cstore_raw x y mop)
@@ -414,13 +418,13 @@ rv32_xcheri_extract = [ cgetperm_raw                    --> extract_1op cgetperm
                       , ccleartag_raw                   --> extract_1op ccleartag_raw
                       , cincoffsetimmediate_raw         --> extract_imm cincoffsetimmediate_raw
                       , csetboundsimmediate_raw         --> extract_imm csetboundsimmediate_raw
-                      , ctoptr_raw                      --> extract_2op ctoptr_raw
-                      , cfromptr_raw                    --> extract_2op cfromptr_raw
+                      -- , ctoptr_raw                      --> extract_2op ctoptr_raw -- CHERIoT lacks ctoptr instr
+                      -- , cfromptr_raw                    --> extract_2op cfromptr_raw -- CHERIoT lacks cfromptr instr
                       , csub_raw                        --> extract_2op csub_raw
                       , cspecialrw_raw                  --> extract_cspecialrw
                       , cmove_raw                       --> extract_cmove
                       , jalr_cap_raw                       --> extract_1op jalr_cap_raw
-                      , cinvoke_raw                     --> extract_cinvoke
+                      -- , cinvoke_raw                     --> extract_cinvoke -- CHERIoT lacks cinvoke instr
                       , ctestsubset_raw                 --> extract_2op ctestsubset_raw
 --                    , clear_raw                       --> noextract -- TODO
 --                    , cclear_raw                       --> noextract -- TODO
@@ -490,12 +494,14 @@ shrink_capimm imm cs cd = shrink_cap cs cd ++ [addi cd 0 imm, addi cd cs imm]
 shrink_cmove :: Integer -> Integer -> [Instruction]
 shrink_cmove cs cd = [cgetaddr cd cs]
 
-shrink_cinvoke :: Integer -> Integer -> [Instruction]
-shrink_cinvoke cs2 cs1 = shrink_capcap cs2 cs1 31
+-- CHERIoT lacks cinvoke instr
+-- shrink_cinvoke :: Integer -> Integer -> [Instruction]
+-- shrink_cinvoke cs2 cs1 = shrink_capcap cs2 cs1 31
 
 shrink_ctestsubset cs2 cs1 rd = [addi rd 0 0, addi rd 0 1] ++ shrink_capcap cs2 cs1 rd
 
-shrink_cfromptr rs cs cd = [csetoffset cd cs rs] ++ shrink_capint rs cs cd
+-- CHERIoT lacks cfromptr instr
+-- shrink_cfromptr rs cs cd = [csetoffset cd cs rs] ++ shrink_capint rs cs cd
 
 shrink_cload :: Integer -> Integer -> Integer -> [Instruction]
 shrink_cload cb cd mop = [addi 0 0 0];
@@ -530,13 +536,13 @@ rv32_xcheri_shrink = [ cgetperm_raw                    --> shrink_cgetperm
                      , ccleartag_raw                   --> shrink_cap
                      , cincoffsetimmediate_raw         --> shrink_capimm
                      , csetboundsimmediate_raw         --> shrink_capimm
-                     , ctoptr_raw                      --> shrink_capcap
-                     , cfromptr_raw                    --> shrink_cfromptr
+                    --  , ctoptr_raw                      --> shrink_capcap -- CHERIoT lacks ctoptr instr
+                    --  , cfromptr_raw                    --> shrink_cfromptr -- CHERIoT lacks cfromptr instr
                      , csub_raw                        --> shrink_capcap
 --                   , cspecialrw_raw                  --> noshrink
                      , cmove_raw                       --> shrink_cmove
 --                   , jalr_cap_raw                       --> noshrink
-                     , cinvoke_raw                     --> shrink_cinvoke
+                    --  , cinvoke_raw                     --> shrink_cinvoke -- CHERIoT lacks cinvoke instr
                      , ctestsubset_raw                 --> shrink_ctestsubset
 --                   , clear_raw                       --> noshrink
 --                   , cclear_raw                      --> noshrink
@@ -576,8 +582,8 @@ rv32_xcheri_arithmetic src1 src2 imm dest =
   , csetboundsexact     dest src1 src2
   , csetboundsimmediate dest src1      imm
   , cincoffsetimmediate dest src1      imm
-  , ctoptr              dest src1 src2
-  , cfromptr            dest src1 src2
+  -- , ctoptr              dest src1 src2 -- CHERIoT lacks ctoptr instr
+  -- , cfromptr            dest src1 src2 -- CHERIoT lacks cfromptr instr
   , csub                dest src1 src2
   , ctestsubset         dest src1 src2 ]
 
@@ -597,8 +603,8 @@ rv32_xcheri_misc src1 src2 srcScr imm dest =
 
 -- | List of cheri control instructions
 rv32_xcheri_control :: Integer -> Integer -> Integer -> [Instruction]
-rv32_xcheri_control src1 src2 dest = [ jalr_cap dest src1
-                                     , cinvoke  src2 src1 ]
+rv32_xcheri_control src1 src2 dest = [ jalr_cap dest src1 ] -- CHERIoT lacks cinvoke instr
+                                    --  , cinvoke  src2 src1 ]
 
 -- | List of cheri memory instructions
 rv32_xcheri_mem :: ArchDesc -> Integer -> Integer -> Integer -> Integer -> Integer -> [Instruction]

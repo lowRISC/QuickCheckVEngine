@@ -89,7 +89,7 @@ genCSCDataTorture capReg tmpReg bitsReg sldReg nopermReg authReg = random $ do
   return $  (uniform [ instUniform $ rv32_xcheri_arithmetic src1 src2 imm tmpReg
                      , instUniform $ rv32_xcheri_misc_alt src1 src2 imm dest
                      , instUniform $ rv32_xcheri_inspection src1 dest
-                     , inst $ cinvoke src2 src1
+                    --  , inst $ cinvoke src2 src1 -- CHERIoT lacks cinvoke instr
                      , inst $ cload tmpReg tmpReg 0x08
                      ])
 
