@@ -141,7 +141,7 @@ genBSC_Jumps_Torture = random $ do
                    , instUniform $ rv32_xcheri_inspection src1 dest
                    , instUniform $ rv32_i_ctrl_jumps regJump dest_jumps imm_jumps longImm_jumps
                    , instUniform $ rv32_i_ctrl_branches src1 src2 imm_branches
-                   , instUniform $ rv32_xcheri_control src1 src2 dest
+                  --  , instUniform $ rv32_xcheri_control src1 src2 dest -- CHERIoT lacks cinvoke and jalr_cap (jalr.cap) instr
                    ]
 
 genBSC_Excps_Torture :: Integer -> Template
@@ -324,14 +324,17 @@ genJump :: Integer -> Integer -> Integer -> Integer -> Integer -> Integer -> Tem
 genJump memReg reg0 reg1 reg2 imm offset = random $ do
   let czero = 0
   let ra = 1
-  return $ instSeq [ jalr_cap ra reg1
-                   , jalr_cap czero ra
+  return $ instSeq [ -- jalr_cap ra reg1 -- CHERIoT lacks jalr_cap (jalr.cap) instr, replace with jalr
+                     jalr ra reg1 0      -- CHERIoT lacks jalr_cap (jalr.cap) instr, replace with jalr
+                  --  , jalr_cap czero ra -- CHERIoT lacks jalr_cap (jalr.cap) instr, replace with jalr
+                   , jalr czero ra 0      -- CHERIoT lacks jalr_cap (jalr.cap) instr, replace with jalr
                    ]
 
 genCSCInst :: Integer -> Integer -> Integer -> Integer -> Template
 genCSCInst memReg reg0 reg1 reg2 = random $ do
   let czero = 0
-  return $ instDist [ (1, jalr_cap czero reg0)
+  return $ instDist [ -- (1, jalr_cap czero reg0) -- CHERIoT lacks jalr_cap (jalr.cap) instr, replace with jalr
+                      (1, jalr czero reg0 0)      -- CHERIoT lacks jalr_cap (jalr.cap) instr, replace with jalr
                     , (2, add 29 29 29)
                     , (1, cload reg1 reg2 0x8)
                     , (1, auipc reg2 0)
@@ -359,7 +362,8 @@ gen_csc_inst_verify = random $ do
   let reg1 = 24
   let reg2 = 25
   let mtcc = 28
-  let startSeq = inst $ jalr_cap zeroReg startReg
+  -- let startSeq = inst $ jalr_cap zeroReg startReg -- CHERIoT lacks jalr_cap (jalr.cap) instr, replace with jalr
+  let startSeq = inst $ jalr zeroReg startReg 0      -- CHERIoT lacks jalr_cap (jalr.cap) instr, replace with jalr
   let trainSeq = repeatN (18) (genJump memReg tmpReg pccReg loadReg 0x20 0x0)
   let leakSeq = repeatN (1) (genJump memReg2 tmpReg pccReg loadReg 0x20 0x100)
   let tortSeq = startSeq <> leakSeq

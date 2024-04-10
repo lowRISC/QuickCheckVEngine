@@ -89,7 +89,7 @@ module RISCV.RV32_Xcheri (
 -- , cfromptr -- CHERIoT lacks cfromptr instr
 , csub
 , cmove
-, jalr_cap
+-- , jalr_cap -- CHERIoT lacks jalr_cap (jalr.cap) instr
 -- , cinvoke -- CHERIoT lacks cinvoke instr
 , ctestsubset
 , cspecialrw
@@ -115,7 +115,7 @@ module RISCV.RV32_Xcheri (
 , rv32_xcheri_misc
 , rv32_xcheri_mem
 , rv32_a_xcheri
-, rv32_xcheri_control
+-- , rv32_xcheri_control -- CHERIoT lacks cinvoke and jalr_cap (jalr.cap) instr
 ) where
 
 import RISCV.Helpers (reg, int, prettyR, prettyI, prettyL, prettyS, prettyR_2op, prettyR_A_1op, prettyR_A, ExtractedRegs)
@@ -208,8 +208,9 @@ cspecialrw cd cSP cs1              = encode cspecialrw_raw                      
 
 
 -- Control Flow
-jalr_cap_raw                       =                                        "1111111 01100 cs1[4:0] 000 cd[4:0] 1011011"
-jalr_cap cd cs1                    = encode jalr_cap_raw                                      cs1          cd
+-- CHERIoT lacks jalr_cap (jalr.cap) instr
+-- jalr_cap_raw                       =                                        "1111111 01100 cs1[4:0] 000 cd[4:0] 1011011"
+-- jalr_cap cd cs1                    = encode jalr_cap_raw                                      cs1          cd
 -- CHERIoT lacks cinvoke instr
 -- cinvoke_raw                        =                                        "1111110 cs2[4:0] cs1[4:0] 000 00001 1011011"
 -- cinvoke cs2 cs1                    = encode cinvoke_raw                              cs2      cs1
@@ -372,7 +373,7 @@ rv32_xcheri_disass = [ cgetperm_raw                    --> prettyR_2op "cgetperm
                      , csub_raw                        --> prettyR "csub"
                      , cspecialrw_raw                  --> pretty_cspecialrw "cspecialrw"
                      , cmove_raw                       --> prettyR_2op "cmove"
-                     , jalr_cap_raw                       --> prettyR_2op "jalr_cap"
+                    --  , jalr_cap_raw                       --> prettyR_2op "jalr_cap" -- CHERIoT lacks jalr_cap (jalr.cap) instr
                     --  , cinvoke_raw                     --> pretty_2src "cinvoke" -- CHERIoT lacks cinvoke instr
                      , ctestsubset_raw                 --> prettyR "ctestsubset"
                      , clear_raw                       --> pretty_reg_clear "clear"
@@ -437,7 +438,7 @@ rv32_xcheri_extract = [ cgetperm_raw                    --> extract_1op cgetperm
                       , csub_raw                        --> extract_2op csub_raw
                       , cspecialrw_raw                  --> extract_cspecialrw
                       , cmove_raw                       --> extract_cmove
-                      , jalr_cap_raw                       --> extract_1op jalr_cap_raw
+                      -- , jalr_cap_raw                    --> extract_1op jalr_cap_raw -- CHERIoT lacks jalr_cap (jalr.cap) instr
                       -- , cinvoke_raw                     --> extract_cinvoke -- CHERIoT lacks cinvoke instr
                       , ctestsubset_raw                 --> extract_2op ctestsubset_raw
 --                    , clear_raw                       --> noextract -- TODO
@@ -557,7 +558,7 @@ rv32_xcheri_shrink = [ cgetperm_raw                    --> shrink_cgetperm
                      , csub_raw                        --> shrink_capcap
 --                   , cspecialrw_raw                  --> noshrink
                      , cmove_raw                       --> shrink_cmove
---                   , jalr_cap_raw                       --> noshrink
+--                   , jalr_cap_raw                       --> noshrink -- CHERIoT lacks jalr_cap instr
                     --  , cinvoke_raw                     --> shrink_cinvoke -- CHERIoT lacks cinvoke instr
                      , ctestsubset_raw                 --> shrink_ctestsubset
 --                   , clear_raw                       --> noshrink
@@ -620,9 +621,9 @@ rv32_xcheri_misc src1 src2 srcScr imm dest =
   , cspecialrw  dest srcScr src1 ]
 
 -- | List of cheri control instructions
-rv32_xcheri_control :: Integer -> Integer -> Integer -> [Instruction]
-rv32_xcheri_control src1 src2 dest = [ jalr_cap dest src1 ] -- CHERIoT lacks cinvoke instr
-                                    --  , cinvoke  src2 src1 ]
+-- rv32_xcheri_control :: Integer -> Integer -> Integer -> [Instruction]
+-- rv32_xcheri_control src1 src2 dest = [ jalr_cap dest src1 ] -- CHERIoT lacks jalr_cap (jalr.cap) instr
+                                    --  , cinvoke  src2 src1 ] -- CHERIoT lacks cinvoke instr
 
 -- | List of cheri memory instructions
 rv32_xcheri_mem :: ArchDesc -> Integer -> Integer -> Integer -> Integer -> Integer -> [Instruction]
@@ -667,5 +668,5 @@ rv32_xcheri arch src1 src2 srcScr imm mop dest =
      rv32_xcheri_inspection src1 dest
   ++ rv32_xcheri_arithmetic src1 src2 imm dest
   ++ rv32_xcheri_misc src1 src2 srcScr imm dest
-  ++ rv32_xcheri_control src1 src2 dest
+  -- ++ rv32_xcheri_control src1 src2 -- CHERIoT lacks cinvoke and jalr_cap (jalr.cap) instr
   ++ rv32_xcheri_mem arch src1 src2 imm mop dest

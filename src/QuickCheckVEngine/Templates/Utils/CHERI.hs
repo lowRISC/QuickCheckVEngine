@@ -90,14 +90,16 @@ boundPCC tmp1 tmp2 offset size =
             inst $ cincaddr tmp1 tmp1 tmp2, -- increment PCC      -- CHERIoT replaces cincoffset with cincaddr
             li64 tmp2 size,
             inst $ csetbounds tmp1 tmp1 tmp2, -- reduce bounds
-            inst $ jalr_cap tmp1 tmp1 ] -- jump to new PCC
+            -- inst $ jalr_cap tmp1 tmp1 ] -- jump to new PCC -- CHERIoT lacks jalr_cap (jalr.cap) instr, replace with jalr
+            inst $ jalr tmp1 tmp1 0 ] -- jump to new PCC      -- CHERIoT lacks jalr_cap (jalr.cap) instr, replace with jalr
 
 clearASR :: Integer -> Integer -> Template
 clearASR tmp1 tmp2 = instSeq [ cspecialrw tmp1 0 0, -- Get PCC
                                addi tmp2 0 0xbff, -- Load immediate without ASR set
                                candperm tmp1 tmp1 tmp2, -- Mask out ASR
                                cspecialrw 0 28 tmp1, -- Clear ASR in trap vector
-                               jalr_cap tmp1 0 ]
+                              --  jalr_cap tmp1 0 ] -- CHERIoT lacks jalr_cap (jalr.cap) instr, replace with jalr
+                               jalr tmp1 0 0 ]      -- CHERIoT lacks jalr_cap (jalr.cap) instr, replace with jalr
 
 makeCap :: Integer -> Integer -> Integer -> Integer -> Integer -> Integer -> Template
 makeCap dst source tmp base len offset =
@@ -208,7 +210,8 @@ cspecialRWChain = random $ do
   tmpReg5 <- src
   tmpReg6 <- src
   return $ instSeq [ cspecialrw tmpReg2 30 tmpReg1
-                   , jalr_cap      tmpReg2 0
+                  --  , jalr_cap      tmpReg2 0 -- CHERIoT lacks jalr_cap (jalr.cap) instr, replace with jalr
+                   , jalr       tmpReg2 0 0     -- CHERIoT lacks jalr_cap (jalr.cap) instr, replace with jalr
                    , cspecialrw tmpReg4 30 tmpReg3
                    , cspecialrw tmpReg6 30 tmpReg5 ]
 
@@ -278,6 +281,6 @@ genCHERIcontrol = random $ do
   csrAddr  <- frequency [ -- (1, return (unsafe_csrs_indexFromName "mccsr")) -- CHERIoT lacks capability CSRs
                           (1, return (unsafe_csrs_indexFromName "mcause"))
                         , (1, bits 12) ]
-  return $ dist [ (2, instUniform $ rv32_xcheri_control srcAddr srcData dest)
-                , (1, inst (csetbounds dest srcData srcAddr))
+  return $ dist [ -- (2, instUniform $ rv32_xcheri_control srcAddr srcData dest) -- CHERIoT lacks cinvoke and jalr_cap (jalr.cap) instr
+                  (1, inst (csetbounds dest srcData srcAddr))
                 , (2, instUniform $ rv32_i srcAddr srcData dest imm longImm fenceOp1 fenceOp2) ] -- TODO add csr
