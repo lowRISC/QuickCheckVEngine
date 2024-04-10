@@ -70,8 +70,8 @@ gen_cheri_a = random $ do
   addr <- elements [0x80000000, 0x80001000, 0x80004000]
   return . shrinkScope $ (noShrink $ li64 addrReg addr)
                          <>
-                         mconcat [ switchEncodingMode
-                                 , noShrink . inst $ fence_i -- fence
+                         mconcat [ -- switchEncodingMode -- Only pure CHERI mode in CHERIoT
+                                   noShrink . inst $ fence_i -- fence
                                  --, inst $ cload dataReg addrReg 0x14 -- lr.q.ddc
                                  --, inst $ cstore dataReg addrReg 0x14 -- sc.q.ddc
                                  , inst $ lr_q dataReg addrReg 0 0

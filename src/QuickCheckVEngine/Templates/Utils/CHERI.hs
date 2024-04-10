@@ -42,7 +42,7 @@ module QuickCheckVEngine.Templates.Utils.CHERI (
 , legalCapLoad
 , legalCapStore
 , loadRegion
-, switchEncodingMode
+-- , switchEncodingMode
 , cspecialRWChain
 , tagCacheTest
 , genCHERIinspection
@@ -171,18 +171,18 @@ loadRegion ::  Integer -> Integer -> Integer -> Integer -> Template -> Template
 loadRegion numLines capReg cacheLSize tmpReg insts =
    if numLines == 0 then insts
    else if numLines == 1 then mconcat [insts, inst (cload tmpReg capReg 0x0)]
-   else loadRegion (numLines - 1) capReg cacheLSize tmpReg (mconcat [insts, inst (cload tmpReg capReg 0x0), inst (cincoffsetimmediate capReg capReg cacheLSize)])
 
-switchEncodingMode :: Template
-switchEncodingMode = random $ do
-  tmpReg1 <- sbcRegs
-  let tmpReg2 = tmpReg1 + 1
-  mode    <- elements [0, 1]
-  return $ instSeq [ cspecialrw tmpReg1 0 0
-                   , addi tmpReg2 0 mode
-                   , csetflags tmpReg1 tmpReg1 tmpReg2
-                   , cspecialrw 0 28 tmpReg1 --Also write trap vector so we stay in cap mode
-                   , jalr_cap 0 tmpReg1 ]
+-- Only pure CHERI mode in CHERIoT
+-- switchEncodingMode :: Template
+-- switchEncodingMode = random $ do
+--   tmpReg1 <- sbcRegs
+--   let tmpReg2 = tmpReg1 + 1
+--   mode    <- elements [0, 1]
+--   return $ instSeq [ cspecialrw tmpReg1 0 0
+--                    , addi tmpReg2 0 mode
+--                    , csetflags tmpReg1 tmpReg1 tmpReg2
+--                    , cspecialrw 0 28 tmpReg1 --Also write trap vector so we stay in cap mode
+--                    , jalr_cap 0 tmpReg1 ]
 
 cspecialRWChain :: Template
 cspecialRWChain = random $ do
