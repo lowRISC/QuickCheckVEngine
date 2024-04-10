@@ -229,6 +229,6 @@ genCHERIcontrol = random $ do
   csrAddr  <- frequency [ -- (1, return (unsafe_csrs_indexFromName "mccsr")) -- CHERIoT lacks capability CSRs
                           (1, return (unsafe_csrs_indexFromName "mcause"))
                         , (1, bits 12) ]
-  return $ dist [ (2, instUniform $ rv32_xcheri_control srcAddr srcData dest)
-                , (1, inst (csetbounds dest srcData srcAddr))
+  return $ dist [ -- (2, instUniform $ rv32_xcheri_control srcAddr srcData dest) -- CHERIoT lacks cinvoke and jalr_cap (jalr.cap) instr
+                  (1, inst (csetbounds dest srcData srcAddr))
                 , (2, instUniform $ rv32_i srcAddr srcData dest imm longImm fenceOp1 fenceOp2) ] -- TODO add csr
