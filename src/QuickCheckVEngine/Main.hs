@@ -223,12 +223,12 @@ allTests = [
            -- CSC: Capability Speculation Constraint
            -- BSC: Branching Speculation Constraint
            -- TSC: Translation Speculation Constraint
-           , ("csc_data",   "Data CSC Verification",                                  andPs [has_cheri, has_icsr, has_ihpm],              gen_csc_data_verify)
+          --  , ("csc_data",   "Data CSC Verification",                                  andPs [has_cheri, has_icsr, has_ihpm],              gen_csc_data_verify) -- CHERIoT Ibex is not very speculative & test is hard to adapt, so disable for now
            , ("bsc_cond_1", "BSC Condition 1 Verification",                           andPs [has_cheri, has_icsr, has_ihpm, has_xlen_64], gen_bsc_cond_1_verify)
            , ("bsc_jumps",  "BSC Jumps Verification",                                 andPs [has_cheri, has_icsr, has_ihpm, has_xlen_64], gen_bsc_jumps_verify)
            , ("bsc_excps",  "BSC Exceptions Verification",                            andPs [has_cheri, has_icsr, has_ihpm, has_xlen_64], gen_bsc_exceptions_verify)
            , ("tsc",        "TSC Verification",                                       andPs [has_s, has_icsr, has_ihpm, has_xlen_64],     gen_tsc_verify)
-           , ("csc_inst",   "Instruction CSC Verification",                           andPs [has_cheri, has_icsr, has_ihpm, has_xlen_64], gen_csc_inst_verify)
+          --  , ("csc_inst",   "Instruction CSC Verification",                           andPs [has_cheri, has_icsr, has_ihpm, has_xlen_64], gen_csc_inst_verify) -- CHERIoT Ibex is not very speculative & test is hard to adapt, so disable for now
            , ("cclear",     "CClear Verification",                                    andPs [has_cheri, has_xlen_64],                     gen_simple_cclear)
            , ("fpclear",    "FPClear Verification",                                   andPs [has_cheri, has_xlen_64, has_d],              gen_simple_fpclear)
            , ("mem",        "Memory Verification",                                    const True,                               T.repeatTillEnd gen_rv32_i_memory)

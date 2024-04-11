@@ -35,9 +35,9 @@
 --
 
 module QuickCheckVEngine.Templates.GenTransExec (
-  gen_csc_data_verify
-, gen_bsc_cond_1_verify
-, gen_csc_inst_verify
+  -- gen_csc_data_verify-- CHERIoT Ibex is not very speculative & test is hard to adapt, so disable for now
+  gen_bsc_cond_1_verify
+-- , gen_csc_inst_verify -- CHERIoT Ibex is not very speculative & test is hard to adapt, so disable for now
 , gen_bsc_jumps_verify
 , gen_bsc_exceptions_verify
 , gen_tsc_verify
@@ -71,27 +71,27 @@ rv32_xcheri_misc_alt src1 src2 imm dest =
   , csealentry  dest src1
   , ccleartag   dest src1 ]
 
-genCSCDataTorture :: Integer -> Integer -> Integer -> Integer -> Integer -> Integer -> Template
-genCSCDataTorture capReg tmpReg bitsReg sldReg nopermReg authReg = random $ do
-  srcAddr  <- src
-  srcData  <- src
-  dest     <- dest
-  imm      <- bits 12
-  longImm  <- bits 20
-  fenceOp1 <- bits 3
-  fenceOp2 <- bits 3
-  csrAddr  <- frequency [ -- (1, return (unsafe_csrs_indexFromName "mccsr")) -- CHERIoT lacks capability CSRs
-                          (1, return (unsafe_csrs_indexFromName "mcause"))
-                        , (1, bits 12) ]
-  src1     <- frequency [ (1, return capReg), (1, return tmpReg), (1, return bitsReg), (1, return sldReg) ]
-  src2     <- frequency [ (1, return capReg), (1, return tmpReg), (1, return bitsReg), (1, return sldReg) ]
---  let rv32_xcheri_misc_alt = filter (/= (cspecialrw tmpReg csrAddr src1)) (rv32_xcheri_misc src1 src2 csrAddr imm tmpReg)
-  return $  (uniform [ instUniform $ rv32_xcheri_arithmetic src1 src2 imm tmpReg
-                     , instUniform $ rv32_xcheri_misc_alt src1 src2 imm dest
-                     , instUniform $ rv32_xcheri_inspection src1 dest
-                    --  , inst $ cinvoke src2 src1 -- CHERIoT lacks cinvoke instr
-                     , inst $ cload tmpReg tmpReg 0x08
-                     ])
+-- genCSCDataTorture :: Integer -> Integer -> Integer -> Integer -> Integer -> Integer -> Template
+-- genCSCDataTorture capReg tmpReg bitsReg sldReg nopermReg authReg = random $ do
+--   srcAddr  <- src
+--   srcData  <- src
+--   dest     <- dest
+--   imm      <- bits 12
+--   longImm  <- bits 20
+--   fenceOp1 <- bits 3
+--   fenceOp2 <- bits 3
+--   csrAddr  <- frequency [ -- (1, return (unsafe_csrs_indexFromName "mccsr")) -- CHERIoT lacks capability CSRs
+--                           (1, return (unsafe_csrs_indexFromName "mcause"))
+--                         , (1, bits 12) ]
+--   src1     <- frequency [ (1, return capReg), (1, return tmpReg), (1, return bitsReg), (1, return sldReg) ]
+--   src2     <- frequency [ (1, return capReg), (1, return tmpReg), (1, return bitsReg), (1, return sldReg) ]
+-- --  let rv32_xcheri_misc_alt = filter (/= (cspecialrw tmpReg csrAddr src1)) (rv32_xcheri_misc src1 src2 csrAddr imm tmpReg)
+--   return $  (uniform [ instUniform $ rv32_xcheri_arithmetic src1 src2 imm tmpReg
+--                      , instUniform $ rv32_xcheri_misc_alt src1 src2 imm dest
+--                      , instUniform $ rv32_xcheri_inspection src1 dest
+--                     --  , inst $ cinvoke src2 src1 -- CHERIoT lacks cinvoke instr
+--                      , inst $ cload tmpReg tmpReg 0x08
+--                      ])
 
 
 genBSC_Cond_1_Torture :: Template
@@ -296,27 +296,28 @@ prepareTSCGen = random $ do
                    , inst $ sret
                    ]
 
+-- CHERIoT Ibex is not very speculative & test is hard to adapt, so disable for now
 -- | Verify Data Capability Speculation Constraint (CSC)
-gen_csc_data_verify = random $ do
-  let capReg = 1
-  let tmpReg0 = 30
-  let tmpReg1 = 31
-  let bitsReg = 3
-  let sldReg = 4
-  let nopermReg = 5
-  let authReg = 6
-  let hpmEventIdx_dcache_miss = 0x31
-  let hpmCntIdx = 3
-  let prolog = mconcat [ makeCap capReg  authReg tmpReg1 0x80010000     8 0
-                       , makeCap bitsReg authReg tmpReg1 0x80014000 0x100 0
-                       , inst $ csealentry sldReg bitsReg
-                       , inst $ candperm nopermReg bitsReg 0
-                       , inst $ ccleartag bitsReg bitsReg
-                       , inst $ lw tmpReg1 capReg 0
-                       ]
-  let body = surroundWithHPMAccess_core False hpmEventIdx_dcache_miss (repeatTillEnd (genCSCDataTorture capReg tmpReg1 bitsReg sldReg nopermReg authReg)) tmpReg0 hpmCntIdx Nothing
-  let epilog = instAssert (addi tmpReg0 tmpReg0 0) 0
-  return $ shrinkScope $ noShrink prolog <> body <> noShrink epilog
+-- gen_csc_data_verify = random $ do
+--   let capReg = 1
+--   let tmpReg0 = 30
+--   let tmpReg1 = 31
+--   let bitsReg = 3
+--   let sldReg = 4
+--   let nopermReg = 5
+--   let authReg = 6
+--   let hpmEventIdx_dcache_miss = 0x31
+--   let hpmCntIdx = 3
+--   let prolog = mconcat [ makeCap capReg  authReg tmpReg1 0x80010000     8 0
+--                        , makeCap bitsReg authReg tmpReg1 0x80014000 0x100 0
+--                        , inst $ csealentry sldReg bitsReg
+--                        , inst $ candperm nopermReg bitsReg 0
+--                        , inst $ ccleartag bitsReg bitsReg
+--                        , inst $ lw tmpReg1 capReg 0
+--                        ]
+--   let body = surroundWithHPMAccess_core False hpmEventIdx_dcache_miss (repeatTillEnd (genCSCDataTorture capReg tmpReg1 bitsReg sldReg nopermReg authReg)) tmpReg0 hpmCntIdx Nothing
+--   let epilog = instAssert (addi tmpReg0 tmpReg0 0) 0
+--   return $ shrinkScope $ noShrink prolog <> body <> noShrink epilog
 
 
 
@@ -330,92 +331,94 @@ genJump memReg reg0 reg1 reg2 imm offset = random $ do
                    , jalr czero ra 0      -- CHERIoT lacks jalr_cap (jalr.cap) instr, replace with jalr
                    ]
 
-genCSCInst :: Integer -> Integer -> Integer -> Integer -> Template
-genCSCInst memReg reg0 reg1 reg2 = random $ do
-  let czero = 0
-  return $ instDist [ -- (1, jalr_cap czero reg0) -- CHERIoT lacks jalr_cap (jalr.cap) instr, replace with jalr
-                      (1, jalr czero reg0 0)      -- CHERIoT lacks jalr_cap (jalr.cap) instr, replace with jalr
-                    , (2, add 29 29 29)
-                    , (1, cload reg1 reg2 0x8)
-                    , (1, auipc reg2 0)
-                    ]
+-- CHERIoT Ibex is not very speculative & test is hard to adapt, so disable for now
+-- genCSCInst :: Integer -> Integer -> Integer -> Integer -> Template
+-- genCSCInst memReg reg0 reg1 reg2 = random $ do
+--   let czero = 0
+--   return $ instDist [ -- (1, jalr_cap czero reg0) -- CHERIoT lacks jalr_cap (jalr.cap) instr, replace with jalr
+--                       (1, jalr czero reg0 0)      -- CHERIoT lacks jalr_cap (jalr.cap) instr, replace with jalr
+--                     , (2, add 29 29 29)
+--                     , (1, cload reg1 reg2 0x8)
+--                     , (1, auipc reg2 0)
+--                     ]
 
+-- CHERIoT Ibex is not very speculative & test is hard to adapt, so disable for now
 -- | Verify instruction Capability Speculation Constraint (CSC)
-gen_csc_inst_verify = random $ do
-  let hpmEventIdx_dcache_miss = 0x31
-  let hpmCntIdx_dcache_miss = 3
-  let rand = 7
-  let zeroReg = 0
-  let jumpReg = 10
-  let dataReg = 11
-  let tmpReg = 12
-  let counterReg = 13
-  let authReg = 14
-  let startReg = 15
-  let pccReg = 16
-  let loadReg = 17
-  let authReg2 = 18
-  let memReg = 19
-  let memReg2 = 20
-  let memReg3 = 21
-  let reg0 = 23
-  let reg1 = 24
-  let reg2 = 25
-  let mtcc = 28
-  -- let startSeq = inst $ jalr_cap zeroReg startReg -- CHERIoT lacks jalr_cap (jalr.cap) instr, replace with jalr
-  let startSeq = inst $ jalr zeroReg startReg 0      -- CHERIoT lacks jalr_cap (jalr.cap) instr, replace with jalr
-  let trainSeq = repeatN (18) (genJump memReg tmpReg pccReg loadReg 0x20 0x0)
-  let leakSeq = repeatN (1) (genJump memReg2 tmpReg pccReg loadReg 0x20 0x100)
-  let tortSeq = startSeq <> leakSeq
-  let prolog = mconcat [--  switchEncodingMode -- Only pure CHERI mode in CHERIoT
-                        --, inst $ cspecialrw authReg2 0 0 -- read PCC -- CHERIoT cannot read pcc using cspecialrw, use auipc instead
-                         inst $ auipc authReg2 0 -- read PCC           -- CHERIoT cannot read pcc using cspecialrw, use auipc instead
-                       , makeCap_core jumpReg authReg2 tmpReg 0x80001000
-                       , makeCap_core pccReg authReg2 tmpReg 0x80002000
-                       , makeCap_core memReg authReg2 tmpReg 0x80007000
-                       , makeCap_core memReg2 authReg2 tmpReg 0x80007100
-                       , inst $ cmove startReg jumpReg
-                       , inst $ cstore jumpReg memReg 0x0c
-                      --  , inst $ cincoffsetimmediate tmpReg jumpReg 0x100 -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
-                       , inst $ cincaddrimm tmpReg jumpReg 0x100            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
-                       , inst $ ccleartag tmpReg tmpReg
-                       , inst $ cstore tmpReg memReg2 0x0c
-                       , inst $ cload tmpReg memReg2 0x1f
-                       , startSeq
-                       , trainSeq
-                       , inst $ cload tmpReg jumpReg 0x8
-                      --  , inst $ cincoffsetimmediate tmpReg jumpReg 0x40 -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
-                       , inst $ cincaddrimm tmpReg jumpReg 0x40            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
-                       , inst $ cload tmpReg tmpReg 0x8
-                      --  , inst $ cincoffsetimmediate tmpReg jumpReg 0x80 -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
-                       , inst $ cincaddrimm tmpReg jumpReg 0x80            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
-                       , inst $ cload tmpReg tmpReg 0x8
-                      --  , inst $ cincoffsetimmediate tmpReg jumpReg 0xc0 -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
-                       , inst $ cincaddrimm tmpReg jumpReg 0xc0            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
-                       , inst $ cload tmpReg tmpReg 0x8
-                      --  , inst $ cincoffsetimmediate tmpReg jumpReg 0x100 -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
-                       , inst $ cincaddrimm tmpReg jumpReg 0x100            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
-                       , inst $ cload tmpReg tmpReg 0x8
-                       , inst $ add pccReg zeroReg zeroReg
-                       , inst $ cmove jumpReg startReg
-                       -- zero out all sbcRegs
-                       , inst $ cmove 22 zeroReg
-                       , inst $ cmove 23 zeroReg
-                       , inst $ cmove 24 zeroReg
-                       , inst $ cmove 25 zeroReg
-                       , inst $ cmove 26 zeroReg
-                       , inst $ cmove 27 zeroReg
-                       , inst $ cmove 28 zeroReg
-                       , inst $ cmove 29 zeroReg
-                       , inst $ csetboundsimmediate jumpReg jumpReg 256
-                       , inst $ csetboundsimmediate tmpReg startReg 256
-                       , inst $ cspecialrw 0 mtcc jumpReg
-                       , startSeq
-                       , inst $ fence 3 3 -- fence rw, rw
-                       ]
-  let body = surroundWithHPMAccess_core False hpmEventIdx_dcache_miss (repeatN (64)(genCSCInst memReg2 reg0 reg1 reg2)) counterReg hpmCntIdx_dcache_miss Nothing
-  let epilog = instAssert (addi counterReg counterReg 0) 0
-  return $ shrinkScope $ noShrink prolog <> body <> noShrink epilog
+-- gen_csc_inst_verify = random $ do
+--   let hpmEventIdx_dcache_miss = 0x31
+--   let hpmCntIdx_dcache_miss = 3
+--   let rand = 7
+--   let zeroReg = 0
+--   let jumpReg = 10
+--   let dataReg = 11
+--   let tmpReg = 12
+--   let counterReg = 13
+--   let authReg = 14
+--   let startReg = 15
+--   let pccReg = 16
+--   let loadReg = 17
+--   let authReg2 = 18
+--   let memReg = 19
+--   let memReg2 = 20
+--   let memReg3 = 21
+--   let reg0 = 23
+--   let reg1 = 24
+--   let reg2 = 25
+--   let mtcc = 28
+--   -- let startSeq = inst $ jalr_cap zeroReg startReg -- CHERIoT lacks jalr_cap (jalr.cap) instr, replace with jalr
+--   let startSeq = inst $ jalr zeroReg startReg 0      -- CHERIoT lacks jalr_cap (jalr.cap) instr, replace with jalr
+--   let trainSeq = repeatN (18) (genJump memReg tmpReg pccReg loadReg 0x20 0x0)
+--   let leakSeq = repeatN (1) (genJump memReg2 tmpReg pccReg loadReg 0x20 0x100)
+--   let tortSeq = startSeq <> leakSeq
+--   let prolog = mconcat [--  switchEncodingMode -- Only pure CHERI mode in CHERIoT
+--                         --, inst $ cspecialrw authReg2 0 0 -- read PCC -- CHERIoT cannot read pcc using cspecialrw, use auipc instead
+--                          inst $ auipc authReg2 0 -- read PCC           -- CHERIoT cannot read pcc using cspecialrw, use auipc instead
+--                        , makeCap_core jumpReg authReg2 tmpReg 0x80001000
+--                        , makeCap_core pccReg authReg2 tmpReg 0x80002000
+--                        , makeCap_core memReg authReg2 tmpReg 0x80007000
+--                        , makeCap_core memReg2 authReg2 tmpReg 0x80007100
+--                        , inst $ cmove startReg jumpReg
+--                        , inst $ cstore jumpReg memReg 0x0c
+--                       --  , inst $ cincoffsetimmediate tmpReg jumpReg 0x100 -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+--                        , inst $ cincaddrimm tmpReg jumpReg 0x100            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+--                        , inst $ ccleartag tmpReg tmpReg
+--                        , inst $ cstore tmpReg memReg2 0x0c
+--                        , inst $ cload tmpReg memReg2 0x1f
+--                        , startSeq
+--                        , trainSeq
+--                        , inst $ cload tmpReg jumpReg 0x8
+--                       --  , inst $ cincoffsetimmediate tmpReg jumpReg 0x40 -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+--                        , inst $ cincaddrimm tmpReg jumpReg 0x40            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+--                        , inst $ cload tmpReg tmpReg 0x8
+--                       --  , inst $ cincoffsetimmediate tmpReg jumpReg 0x80 -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+--                        , inst $ cincaddrimm tmpReg jumpReg 0x80            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+--                        , inst $ cload tmpReg tmpReg 0x8
+--                       --  , inst $ cincoffsetimmediate tmpReg jumpReg 0xc0 -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+--                        , inst $ cincaddrimm tmpReg jumpReg 0xc0            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+--                        , inst $ cload tmpReg tmpReg 0x8
+--                       --  , inst $ cincoffsetimmediate tmpReg jumpReg 0x100 -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+--                        , inst $ cincaddrimm tmpReg jumpReg 0x100            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+--                        , inst $ cload tmpReg tmpReg 0x8
+--                        , inst $ add pccReg zeroReg zeroReg
+--                        , inst $ cmove jumpReg startReg
+--                        -- zero out all sbcRegs
+--                        , inst $ cmove 22 zeroReg
+--                        , inst $ cmove 23 zeroReg
+--                        , inst $ cmove 24 zeroReg
+--                        , inst $ cmove 25 zeroReg
+--                        , inst $ cmove 26 zeroReg
+--                        , inst $ cmove 27 zeroReg
+--                        , inst $ cmove 28 zeroReg
+--                        , inst $ cmove 29 zeroReg
+--                        , inst $ csetboundsimmediate jumpReg jumpReg 256
+--                        , inst $ csetboundsimmediate tmpReg startReg 256
+--                        , inst $ cspecialrw 0 mtcc jumpReg
+--                        , startSeq
+--                        , inst $ fence 3 3 -- fence rw, rw
+--                        ]
+--   let body = surroundWithHPMAccess_core False hpmEventIdx_dcache_miss (repeatN (64)(genCSCInst memReg2 reg0 reg1 reg2)) counterReg hpmCntIdx_dcache_miss Nothing
+--   let epilog = instAssert (addi counterReg counterReg 0) 0
+--   return $ shrinkScope $ noShrink prolog <> body <> noShrink epilog
 
 -- | Verify condition 1 of Branching Speculation Constraint (BSC)
 gen_bsc_cond_1_verify = random $ do
