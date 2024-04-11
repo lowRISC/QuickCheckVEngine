@@ -34,7 +34,7 @@
 module QuickCheckVEngine.Templates.GenAtomics (
   gen_rv32_a
 , gen_rv64_a
-, gen_cheri_a
+-- , gen_cheri_a -- CHERIoT lacks atomics
 ) where
 
 import Test.QuickCheck
@@ -63,18 +63,19 @@ genAtomics has_xlen_64 has_cap = random $ do
               ++ if has_cap then rv32_a_xcheri src1 src2 dest else []
   return $ instUniform insts
 
-gen_cheri_a :: Template
-gen_cheri_a = random $ do
-  let addrReg = 2
-  let dataReg = 1
-  addr <- elements [0x80000000, 0x80001000, 0x80004000]
-  return . shrinkScope $ (noShrink $ li64 addrReg addr)
-                         <>
-                         mconcat [ -- switchEncodingMode -- Only pure CHERI mode in CHERIoT
-                                   noShrink . inst $ fence_i -- fence
-                                 --, inst $ cload dataReg addrReg 0x14 -- lr.q.ddc
-                                 --, inst $ cstore dataReg addrReg 0x14 -- sc.q.ddc
-                                 , inst $ lr_q dataReg addrReg 0 0
-                                 , inst $ sc_q dataReg addrReg dataReg 0 0
-                                 , noShrink . inst $ fence_i -- fence
-                                 , inst $ cload dataReg addrReg 0x17 ] -- lq.ddc
+-- CHERIoT lacks atomics
+-- gen_cheri_a :: Template
+-- gen_cheri_a = random $ do
+--   let addrReg = 2
+--   let dataReg = 1
+--   addr <- elements [0x80000000, 0x80001000, 0x80004000]
+--   return . shrinkScope $ (noShrink $ li64 addrReg addr)
+--                          <>
+--                          mconcat [ -- switchEncodingMode -- Only pure CHERI mode in CHERIoT
+--                                    noShrink . inst $ fence_i -- fence
+--                                  --, inst $ cload dataReg addrReg 0x14 -- lr.q.ddc
+--                                  --, inst $ cstore dataReg addrReg 0x14 -- sc.q.ddc
+--                                  , inst $ lr_q dataReg addrReg 0 0
+--                                  , inst $ sc_q dataReg addrReg dataReg 0 0
+--                                  , noShrink . inst $ fence_i -- fence
+--                                  , inst $ cload dataReg addrReg 0x17 ] -- lq.ddc

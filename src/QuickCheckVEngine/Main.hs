@@ -243,7 +243,7 @@ allTests = [
            , ("atomic",     "A Extension Verification",                               has_a,                                    T.repeatTillEnd gen_rv32_a)
            , ("memAmo",     "AMO Memory Verification",                                has_a,                                    T.repeatTillEnd gen_rv32_i_a_memory)
            , ("atomic64",   "RV64 A Extension Verification",                          andPs [has_a, has_xlen_64],               T.repeatTillEnd gen_rv64_a)
-           , ("capatomic",  "Xcheri A Extension Verification",                        andPs [has_a, has_xlen_64],               T.repeatTillEnd gen_cheri_a)
+          --  , ("capatomic",  "Xcheri A Extension Verification",                        andPs [has_a, has_xlen_64],               T.repeatTillEnd gen_cheri_a) -- CHERIoT lacks atomics
            , ("memAmo64",   "RV64 AMO Memory Verification",                           andPs [has_a, has_xlen_64],               T.repeatTillEnd gen_rv64_i_a_memory)
            , ("compressed", "C Extension Verification",                               has_c,                                    T.repeatTillEnd gen_rv_c)
            , ("float",      "F Extension Verification",                               has_f,                                    T.repeatTillEnd gen_rv32_f)
