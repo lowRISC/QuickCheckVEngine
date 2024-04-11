@@ -80,7 +80,8 @@ import QuickCheckVEngine.Templates.Utils.General
 
 boundPCC :: Integer -> Integer -> Integer -> Integer -> Template
 boundPCC tmp1 tmp2 offset size =
-  mconcat [ inst $ cspecialrw tmp1 0 0, -- Get PCC
+  mconcat [ -- inst $ cspecialrw tmp1 0 0, -- Get PCC -- CHERIoT cannot read pcc using cspecialrw, use auipc instead
+            inst $ auipc tmp1 0, -- Get PCC           -- CHERIoT cannot read pcc using cspecialrw, use auipc instead
             li64 tmp2 offset,
             -- inst $ cincoffset tmp1 tmp1 tmp2, -- increment PCC -- CHERIoT replaces cincoffset with cincaddr
             inst $ cincaddr tmp1 tmp1 tmp2, -- increment PCC      -- CHERIoT replaces cincoffset with cincaddr
@@ -90,7 +91,8 @@ boundPCC tmp1 tmp2 offset size =
             inst $ jalr tmp1 tmp1 0 ] -- jump to new PCC      -- CHERIoT lacks jalr_cap (jalr.cap) instr, replace with jalr
 
 clearASR :: Integer -> Integer -> Template
-clearASR tmp1 tmp2 = instSeq [ cspecialrw tmp1 0 0, -- Get PCC
+clearASR tmp1 tmp2 = instSeq [ -- cspecialrw tmp1 0 0, -- Get PCC -- CHERIoT cannot read pcc using cspecialrw, use auipc instead
+                               auipc tmp1 0, -- Get PCC           -- CHERIoT cannot read pcc using cspecialrw, use auipc instead
                                addi tmp2 0 0xbff, -- Load immediate without ASR set
                                candperm tmp1 tmp1 tmp2, -- Mask out ASR
                                cspecialrw 0 28 tmp1, -- Clear ASR in trap vector
