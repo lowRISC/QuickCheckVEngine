@@ -93,6 +93,8 @@ module RISCV.RV32_Xcheri (
 -- , cinvoke -- CHERIoT lacks cinvoke instr
 , ctestsubset
 , cspecialrw
+, auicgp
+-- , auipcc -- auipcc uses same encoding as auipc, so just use auipc
 , clear
 , cclear
 , fpclear
@@ -118,7 +120,7 @@ module RISCV.RV32_Xcheri (
 -- , rv32_xcheri_control -- CHERIoT lacks cinvoke and jalr_cap (jalr.cap) instr
 ) where
 
-import RISCV.Helpers (reg, int, prettyR, prettyI, prettyL, prettyS, prettyR_2op, prettyR_A_1op, prettyR_A, ExtractedRegs)
+import RISCV.Helpers (reg, int, prettyR, prettyI, prettyL, prettyS, prettyR_2op, prettyR_A_1op, prettyR_A, prettyU, ExtractedRegs)
 import InstrCodec (DecodeBranch, (-->), encode, Instruction)
 import RISCV.RV32_I
 import RISCV.ArchDesc
@@ -205,7 +207,11 @@ cmove_raw                          =                                        "111
 cmove cd cs1                       = encode cmove_raw                                      cs1          cd
 cspecialrw_raw                     =                                        "0000001 cSP[4:0] cs1[4:0] 000 cd[4:0] 1011011"
 cspecialrw cd cSP cs1              = encode cspecialrw_raw                           cSP      cs1          cd
-
+auicgp_raw                         =                                        "imm[31:12] cd[4:0] 1111011"
+auicgp cd imm                      = encode auicgp_raw                       imm        cd
+-- auipcc uses same encoding as auipc, so just use auipc
+-- auipcc_raw                         =                                        "imm[31:12] cd[4:0] 0010111"
+-- auipcc cd imm                      = encode auipcc_raw                       imm       cd
 
 -- Control Flow
 -- CHERIoT lacks jalr_cap (jalr.cap) instr
@@ -372,6 +378,8 @@ rv32_xcheri_disass = [ cgetperm_raw                    --> prettyR_2op "cgetperm
                     --  , cfromptr_raw                    --> prettyR "cfromptr" -- CHERIoT lacks cfromptr instr
                      , csub_raw                        --> prettyR "csub"
                      , cspecialrw_raw                  --> pretty_cspecialrw "cspecialrw"
+                     , auicgp_raw                      --> prettyU "auicgp"
+                    --  , auipcc_raw                      --> prettyU "auipcc" -- auipcc uses same encoding as auipc, so just use auipc
                      , cmove_raw                       --> prettyR_2op "cmove"
                     --  , jalr_cap_raw                       --> prettyR_2op "jalr_cap" -- CHERIoT lacks jalr_cap (jalr.cap) instr
                     --  , cinvoke_raw                     --> pretty_2src "cinvoke" -- CHERIoT lacks cinvoke instr
@@ -437,6 +445,8 @@ rv32_xcheri_extract = [ cgetperm_raw                    --> extract_1op cgetperm
                       -- , cfromptr_raw                    --> extract_2op cfromptr_raw -- CHERIoT lacks cfromptr instr
                       , csub_raw                        --> extract_2op csub_raw
                       , cspecialrw_raw                  --> extract_cspecialrw
+                      , auicgp_raw                      --> extract_uimm auicgp_raw
+                      -- , auipcc_raw                      --> extract_uimm auipcc_raw -- auipcc uses same encoding as auipc, so just use auipc
                       , cmove_raw                       --> extract_cmove
                       -- , jalr_cap_raw                    --> extract_1op jalr_cap_raw -- CHERIoT lacks jalr_cap (jalr.cap) instr
                       -- , cinvoke_raw                     --> extract_cinvoke -- CHERIoT lacks cinvoke instr
@@ -557,6 +567,8 @@ rv32_xcheri_shrink = [ cgetperm_raw                    --> shrink_cgetperm
                     --  , cfromptr_raw                    --> shrink_cfromptr -- CHERIoT lacks cfromptr instr
                      , csub_raw                        --> shrink_capcap
 --                   , cspecialrw_raw                  --> noshrink
+                     , auicgp_raw                      --> shrink_uimm
+                    --  , auipcc_raw                      --> shrink_uimm -- auipcc uses same encoding as auipc, so just use auipc
                      , cmove_raw                       --> shrink_cmove
 --                   , jalr_cap_raw                       --> noshrink -- CHERIoT lacks jalr_cap instr
                     --  , cinvoke_raw                     --> shrink_cinvoke -- CHERIoT lacks cinvoke instr
@@ -618,7 +630,8 @@ rv32_xcheri_misc src1 src2 srcScr imm dest =
   , ccseal      dest src1 src2
   , csealentry  dest src1
   , ccleartag   dest src1
-  , cspecialrw  dest srcScr src1 ]
+  , cspecialrw  dest srcScr src1
+  , auicgp      dest imm ]
 
 -- | List of cheri control instructions
 -- rv32_xcheri_control :: Integer -> Integer -> Integer -> [Instruction]
