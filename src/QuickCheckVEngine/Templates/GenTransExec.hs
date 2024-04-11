@@ -368,7 +368,8 @@ gen_csc_inst_verify = random $ do
   let leakSeq = repeatN (1) (genJump memReg2 tmpReg pccReg loadReg 0x20 0x100)
   let tortSeq = startSeq <> leakSeq
   let prolog = mconcat [--  switchEncodingMode -- Only pure CHERI mode in CHERIoT
-                         inst $ cspecialrw authReg2 0 0 -- read PCC
+                        --, inst $ cspecialrw authReg2 0 0 -- read PCC -- CHERIoT cannot read pcc using cspecialrw, use auipc instead
+                         inst $ auipc authReg2 0 -- read PCC           -- CHERIoT cannot read pcc using cspecialrw, use auipc instead
                        , makeCap_core jumpReg authReg2 tmpReg 0x80001000
                        , makeCap_core pccReg authReg2 tmpReg 0x80002000
                        , makeCap_core memReg authReg2 tmpReg 0x80007000
