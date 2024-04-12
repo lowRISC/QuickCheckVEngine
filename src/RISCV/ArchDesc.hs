@@ -156,7 +156,7 @@ fromString str = ArchDesc { has_xlen_32     = True
                           , has_ifencei     = ifencei
                           , has_cheri       = (cheri || cheriot) -- TODO separate cheriot
                           , has_cheriot     = cheriot
-                          , has_nocloadtags = nocloadtags
+                          , has_nocloadtags = (nocloadtags || cheriot) -- TODO separate cheriot
                           }
   where rawSplit = splitOneOf "_zx" (map toLower str)
         archStrings = filter (\x -> not $ null x) rawSplit

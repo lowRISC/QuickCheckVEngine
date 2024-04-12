@@ -84,7 +84,7 @@ module RISCV.RV32_Xcheri (
 , ccopytype
 , ccseal
 , csealentry
-, cloadtags
+, cloadtags -- CHERIoT lacks cloadtags instr, disabled using has_nocloadtags rather than code removal
 -- , ctoptr -- CHERIoT lacks ctoptr instr
 -- , cfromptr -- CHERIoT lacks cfromptr instr
 , csub
@@ -190,6 +190,7 @@ ccseal_raw                         =                                        "001
 ccseal cd cs1 cs2                  = encode ccseal_raw                               cs2      cs1          cd
 csealentry_raw                     =                                        "1111111 10001 cs1[4:0] 000 cd[4:0] 1011011"
 csealentry cd cs1                  = encode csealentry_raw                                 cs1          cd
+-- CHERIoT lacks cloadtags instr, disabled using has_nocloadtags rather than code removal
 cloadtags_raw                      =                                        "1111111 10010 cs1[4:0] 000 rd[4:0] 1011011"
 cloadtags rd cs1                   = encode cloadtags_raw                                  cs1          rd
 
@@ -378,7 +379,7 @@ rv32_xcheri_disass = [ cgetperm_raw                    --> prettyR_2op "cgetperm
                      , ccopytype_raw                   --> prettyR "ccopytype"
                      , ccseal_raw                      --> prettyR "ccseal"
                      , csealentry_raw                  --> prettyR_2op "csealentry"
-                     , cloadtags_raw                   --> prettyR_2op "cloadtags"
+                     , cloadtags_raw                   --> prettyR_2op "cloadtags" -- CHERIoT lacks cloadtags instr, disabled using has_nocloadtags rather than code removal
                      , ccleartag_raw                   --> prettyR_2op "ccleartag"
                     --  , cincoffsetimmediate_raw         --> prettyI "cincoffsetimmediate" -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
                      , cincaddrimm_raw                 --> prettyI "cincaddrimm"            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
@@ -446,7 +447,7 @@ rv32_xcheri_extract = [ cgetperm_raw                    --> extract_1op cgetperm
                       , ccopytype_raw                   --> extract_2op ccopytype_raw
                       , ccseal_raw                      --> extract_2op ccseal_raw
                       , csealentry_raw                  --> extract_1op csealentry_raw
-                      , cloadtags_raw                   --> extract_1op cloadtags_raw
+                      , cloadtags_raw                   --> extract_1op cloadtags_raw -- CHERIoT lacks cloadtags instr, disabled using has_nocloadtags rather than code removal
                       , ccleartag_raw                   --> extract_1op ccleartag_raw
                       -- , cincoffsetimmediate_raw         --> extract_imm cincoffsetimmediate_raw -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
                       , cincaddrimm_raw                 --> extract_imm cincaddrimm_raw            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
@@ -660,7 +661,7 @@ rv32_xcheri_mem    arch srcAddr srcData imm mop dest =
   --, clc    dest srcAddr dest        imm -- clc formerly known as lq
   --, csc    srcData srcAddr          imm -- csc formerly known as sq (note: swapped reg order)
   ]
-  ++ [cloadtags dest srcAddr | not $ has_nocloadtags arch]
+  ++ [cloadtags dest srcAddr | not $ has_nocloadtags arch] -- CHERIoT lacks cloadtags instr, disabled using has_nocloadtags rather than code removal
 
 -- | List of cheri memory instructions
 rv32_a_xcheri :: Integer -> Integer -> Integer -> [Instruction]
