@@ -64,11 +64,11 @@ rv32_xcheri_misc_alt src1 src2 imm dest =
   [ cseal       dest src1 src2
   , cunseal     dest src1 src2
   , candperm    dest src1 src2
-  , cbuildcap   dest src1 src2
-  , csetflags   dest src1 src2
-  , ccopytype   dest src1 src2
-  , ccseal      dest src1 src2
-  , csealentry  dest src1
+  -- , cbuildcap   dest src1 src2 -- CHERIoT lacks cbuildcap instr
+  -- , csetflags   dest src1 src2 -- CHERIoT lacks csetflags instr
+  -- , ccopytype   dest src1 src2 -- CHERIoT lacks ccopytype instr
+  -- , ccseal      dest src1 src2 -- CHERIoT lacks ccseal instr
+  -- , csealentry  dest src1 -- CHERIoT lacks csealentry instr
   , ccleartag   dest src1 ]
 
 -- genCSCDataTorture :: Integer -> Integer -> Integer -> Integer -> Integer -> Integer -> Template

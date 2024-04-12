@@ -60,15 +60,15 @@ module RISCV.RV32_Xcheri (
 , cgetbase
 , cgetlen
 , cgettag
-, cgetsealed
+-- , cgetsealed -- CHERIoT lacks cgetsealed instr
 -- , cgetoffset -- CHERIoT lacks cgetoffset instr
-, cgetflags
+-- , cgetflags -- CHERIoT lacks cgetflags instr
 , cgetaddr
 , cgethigh
 , cseal
 , cunseal
 , candperm
-, csetflags
+-- , csetflags -- CHERIoT lacks csetflags instr
 -- , csetoffset -- CHERIoT lacks csetoffset instr
 , csetaddr
 , csethigh
@@ -80,10 +80,10 @@ module RISCV.RV32_Xcheri (
 , csetboundsexact
 , csetboundsimmediate
 , ccleartag
-, cbuildcap
-, ccopytype
-, ccseal
-, csealentry
+-- , cbuildcap -- CHERIoT lacks cbuildcap instr
+-- , ccopytype -- CHERIoT lacks ccopytype instr
+-- , ccseal -- CHERIoT lacks ccseal instr
+-- , csealentry -- CHERIoT lacks csealentry instr
 , cloadtags -- CHERIoT lacks cloadtags instr, disabled using has_nocloadtags rather than code removal
 -- , ctoptr -- CHERIoT lacks ctoptr instr
 -- , cfromptr -- CHERIoT lacks cfromptr instr
@@ -95,9 +95,9 @@ module RISCV.RV32_Xcheri (
 , cspecialrw
 , auicgp
 -- , auipcc -- auipcc uses same encoding as auipc, so just use auipc
-, clear
-, cclear
-, fpclear
+-- , clear -- CHERIoT lacks clear instr
+-- , cclear -- CHERIoT lacks cclear instr
+-- , fpclear -- CHERIoT lacks fpclear instr
 , croundrepresentablelength
 , crepresentablealignmentmask
 -- , cload -- CHERIoT lacks mem loads w/explicit addr
@@ -136,13 +136,15 @@ cgetlen_raw                        =                                        "111
 cgetlen rd cs1                     = encode cgetlen_raw                                    cs1          rd
 cgettag_raw                        =                                        "1111111 00100 cs1[4:0] 000 rd[4:0] 1011011"
 cgettag rd cs1                     = encode cgettag_raw                                    cs1          rd
-cgetsealed_raw                     =                                        "1111111 00101 cs1[4:0] 000 rd[4:0] 1011011"
-cgetsealed rd cs1                  = encode cgetsealed_raw                                 cs1          rd
+-- CHERIoT lacks cgetsealed instr
+-- cgetsealed_raw                     =                                        "1111111 00101 cs1[4:0] 000 rd[4:0] 1011011"
+-- cgetsealed rd cs1                  = encode cgetsealed_raw                                 cs1          rd
 -- CHERIoT lacks cgetoffset instr
 -- cgetoffset_raw                     =                                        "1111111 00110 cs1[4:0] 000 rd[4:0] 1011011"
 -- cgetoffset rd cs1                  = encode cgetoffset_raw                                 cs1          rd
-cgetflags_raw                      =                                        "1111111 00111 cs1[4:0] 000 rd[4:0] 1011011"
-cgetflags rd cs1                   = encode cgetflags_raw                                  cs1          rd
+-- CHERIoT lacks cgetflags instr
+-- cgetflags_raw                      =                                        "1111111 00111 cs1[4:0] 000 rd[4:0] 1011011"
+-- cgetflags rd cs1                   = encode cgetflags_raw                                  cs1          rd
 cgetaddr_raw                       =                                        "1111111 01111 cs1[4:0] 000 rd[4:0] 1011011"
 cgetaddr rd cs1                    = encode cgetaddr_raw                                   cs1          rd
 cgethigh_raw                       =                                        "1111111 10111 cs1[4:0] 000 rd[4:0] 1011011"
@@ -155,8 +157,9 @@ cunseal_raw                        =                                        "000
 cunseal cd cs1 cs2                 = encode cunseal_raw                              cs2      cs1          cd
 candperm_raw                       =                                        "0001101 rs2[4:0] cs1[4:0] 000 cd[4:0] 1011011"
 candperm cd cs1 rs2                = encode candperm_raw                             rs2      cs1          cd
-csetflags_raw                      =                                        "0001110 rs2[4:0] cs1[4:0] 000 cd[4:0] 1011011"
-csetflags cd cs1 rs2               = encode csetflags_raw                            rs2      cs1          cd
+-- CHERIoT lacks csetflags instr
+-- csetflags_raw                      =                                        "0001110 rs2[4:0] cs1[4:0] 000 cd[4:0] 1011011"
+-- csetflags cd cs1 rs2               = encode csetflags_raw                            rs2      cs1          cd
 -- CHERIoT lacks csetoffset instr
 -- csetoffset_raw                     =                                        "0001111 rs2[4:0] cs1[4:0] 000 cd[4:0] 1011011"
 -- csetoffset cd cs1 rs2              = encode csetoffset_raw                           rs2      cs1          cd
@@ -182,14 +185,18 @@ csetboundsimmediate_raw            =                                        "imm
 csetboundsimmediate cd cs1 imm     = encode csetboundsimmediate_raw          imm       cs1          cd
 ccleartag_raw                      =                                        "1111111 01011 cs1[4:0] 000 cd[4:0] 1011011"
 ccleartag cd cs1                   = encode ccleartag_raw                                  cs1          cd
-cbuildcap_raw                      =                                        "0011101 cs2[4:0] cs1[4:0] 000 cd[4:0] 1011011"
-cbuildcap cd cs1 cs2               = encode cbuildcap_raw                            cs2      cs1          cd
-ccopytype_raw                      =                                        "0011110 cs2[4:0] cs1[4:0] 000 cd[4:0] 1011011"
-ccopytype cd cs1 cs2               = encode ccopytype_raw                            cs2      cs1          cd
-ccseal_raw                         =                                        "0011111 cs2[4:0] cs1[4:0] 000 cd[4:0] 1011011"
-ccseal cd cs1 cs2                  = encode ccseal_raw                               cs2      cs1          cd
-csealentry_raw                     =                                        "1111111 10001 cs1[4:0] 000 cd[4:0] 1011011"
-csealentry cd cs1                  = encode csealentry_raw                                 cs1          cd
+-- CHERIoT lacks cbuildcap instr
+-- cbuildcap_raw                      =                                        "0011101 cs2[4:0] cs1[4:0] 000 cd[4:0] 1011011"
+-- cbuildcap cd cs1 cs2               = encode cbuildcap_raw                            cs2      cs1          cd
+-- CHERIoT lacks ccopytype instr
+-- ccopytype_raw                      =                                        "0011110 cs2[4:0] cs1[4:0] 000 cd[4:0] 1011011"
+-- ccopytype cd cs1 cs2               = encode ccopytype_raw                            cs2      cs1          cd
+-- CHERIoT lacks ccseal instr
+-- ccseal_raw                         =                                        "0011111 cs2[4:0] cs1[4:0] 000 cd[4:0] 1011011"
+-- ccseal cd cs1 cs2                  = encode ccseal_raw                               cs2      cs1          cd
+-- CHERIoT lacks csealentry instr
+-- csealentry_raw                     =                                        "1111111 10001 cs1[4:0] 000 cd[4:0] 1011011"
+-- csealentry cd cs1                  = encode csealentry_raw                                 cs1          cd
 -- CHERIoT lacks cloadtags instr, disabled using has_nocloadtags rather than code removal
 cloadtags_raw                      =                                        "1111111 10010 cs1[4:0] 000 rd[4:0] 1011011"
 cloadtags rd cs1                   = encode cloadtags_raw                                  cs1          rd
@@ -227,12 +234,15 @@ ctestsubset_raw                    =                                        "010
 ctestsubset rd cs1 cs2             = encode ctestsubset_raw                          cs2      cs1          rd
 
 -- Register Clearing
-clear_raw                          =                                        "1111111 01101 q[1:0] imm[7:5] 000 imm[4:0] 1011011"
-clear q imm                        = encode clear_raw                                      q      imm
-cclear_raw                         =                                        "1111111 01110 q[1:0] imm[7:5] 000 imm[4:0] 1011011"
-cclear q imm                       = encode cclear_raw                                     q      imm
-fpclear_raw                        =                                        "1111111 10000 q[1:0] imm[7:5] 000 imm[4:0] 1011011"
-fpclear q imm                      = encode fpclear_raw                                    q      imm
+-- CHERIoT lacks clear instr
+-- clear_raw                          =                                        "1111111 01101 q[1:0] imm[7:5] 000 imm[4:0] 1011011"
+-- clear q imm                        = encode clear_raw                                      q      imm
+-- CHERIoT lacks cclear instr
+-- cclear_raw                         =                                        "1111111 01110 q[1:0] imm[7:5] 000 imm[4:0] 1011011"
+-- cclear q imm                       = encode cclear_raw                                     q      imm
+-- CHERIoT lacks fpclear instr
+-- fpclear_raw                        =                                        "1111111 10000 q[1:0] imm[7:5] 000 imm[4:0] 1011011"
+-- fpclear q imm                      = encode fpclear_raw                                    q      imm
 
 -- Adjusting to Compressed Capability Precision
 croundrepresentablelength_raw      =                                        "1111111 01000 rs1[4:0] 000 rd[4:0] 1011011"
@@ -329,8 +339,9 @@ csc cs2 cs1 imm                    = encode csc_raw                          imm
 --                               0x1c -> "sc.q.cap" -- TODO only valid in rv64
 --                               _ -> "INVALID"
 
+-- CHERIoT lacks clear,cclear, and fpclear instructions
 -- | Pretty-print a register clear instruction
-pretty_reg_clear instr imm qt = concat [instr, " ", int qt, ", ", int imm]
+-- pretty_reg_clear instr imm qt = concat [instr, " ", int qt, ", ", int imm]
 
 -- | Pretty-print a 2 sources instruction
 pretty_2src instr src2 src1 = concat [instr, " ", reg src1, ", ", reg src2]
@@ -361,7 +372,7 @@ rv32_xcheri_disass = [ cgetperm_raw                    --> prettyR_2op "cgetperm
                      , cgetbase_raw                    --> prettyR_2op "cgetbase"
                      , cgetlen_raw                     --> prettyR_2op "cgetlen"
                      , cgettag_raw                     --> prettyR_2op "cgettag"
-                     , cgetsealed_raw                  --> prettyR_2op "cgetsealed"
+                    --  , cgetsealed_raw                  --> prettyR_2op "cgetsealed" -- CHERIoT lacks cgetsealed instr
                     --  , cgetoffset_raw                  --> prettyR_2op "cgetoffset" -- CHERIoT lacks cgetoffset instr
                      , cgetaddr_raw                    --> prettyR_2op "cgetaddr"
                      , cgethigh_raw                    --> prettyR_2op "cgethigh"
@@ -375,10 +386,10 @@ rv32_xcheri_disass = [ cgetperm_raw                    --> prettyR_2op "cgetperm
                      , cincaddr_raw                    --> prettyR "cincaddr"      -- CHERIoT replaces cincoffset with cincaddr
                      , csetbounds_raw                  --> prettyR "csetbounds"
                      , csetboundsexact_raw             --> prettyR "csetboundsexact"
-                     , cbuildcap_raw                   --> prettyR "cbuildcap"
-                     , ccopytype_raw                   --> prettyR "ccopytype"
-                     , ccseal_raw                      --> prettyR "ccseal"
-                     , csealentry_raw                  --> prettyR_2op "csealentry"
+                    --  , cbuildcap_raw                   --> prettyR "cbuildcap" -- CHERIoT lacks cbuildcap instr
+                    --  , ccopytype_raw                   --> prettyR "ccopytype" -- CHERIoT lacks ccopytype instr
+                    --  , ccseal_raw                      --> prettyR "ccseal" -- CHERIoT lacks ccseal instr
+                    --  , csealentry_raw                  --> prettyR_2op "csealentry" -- CHERIoT lacks csealentry instr
                      , cloadtags_raw                   --> prettyR_2op "cloadtags" -- CHERIoT lacks cloadtags instr, disabled using has_nocloadtags rather than code removal
                      , ccleartag_raw                   --> prettyR_2op "ccleartag"
                     --  , cincoffsetimmediate_raw         --> prettyI "cincoffsetimmediate" -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
@@ -394,15 +405,15 @@ rv32_xcheri_disass = [ cgetperm_raw                    --> prettyR_2op "cgetperm
                     --  , jalr_cap_raw                       --> prettyR_2op "jalr_cap" -- CHERIoT lacks jalr_cap (jalr.cap) instr
                     --  , cinvoke_raw                     --> pretty_2src "cinvoke" -- CHERIoT lacks cinvoke instr
                      , ctestsubset_raw                 --> prettyR "ctestsubset"
-                     , clear_raw                       --> pretty_reg_clear "clear"
-                     , cclear_raw                      --> pretty_reg_clear "cclear"
-                     , fpclear_raw                     --> pretty_reg_clear "fpclear"
+                    --  , clear_raw                       --> pretty_reg_clear "clear" -- CHERIoT lacks clear instr
+                    --  , cclear_raw                      --> pretty_reg_clear "cclear" -- CHERIoT lacks cclear instr
+                    --  , fpclear_raw                     --> pretty_reg_clear "fpclear" -- CHERIoT lacks fpclear instr
                      , croundrepresentablelength_raw   --> prettyR_2op "croundrepresentablelength"
                      , crepresentablealignmentmask_raw --> prettyR_2op "crepresentablealignmentmask"
                     --  , cload_raw                       --> prettyCLoad -- CHERIoT lacks mem loads w/explicit addr
                     --  , cstore_raw                      --> prettyCStore -- CHERIoT lacks mem stores w/explicit addr
-                     , cgetflags_raw                   --> prettyR_2op "cgetflags"
-                     , csetflags_raw                   --> prettyR "csetflags"
+                    --  , cgetflags_raw                   --> prettyR_2op "cgetflags" -- CHERIoT lacks cgetflags instr
+                    --  , csetflags_raw                   --> prettyR "csetflags" -- CHERIoT lacks csetflags instr
                      , csc_raw                         --> prettyS "csc" -- csc formerly known as sq (note: swapped reg order)
                      , clc_raw                         --> prettyL "clc" ] -- clc formerly known as lq
                     --  , lr_q_raw                        --> prettyR_A_1op "lr.q" -- CHERIoT lacks lr_q (lr.c/q) atomic instr
@@ -428,9 +439,9 @@ rv32_xcheri_extract = [ cgetperm_raw                    --> extract_1op cgetperm
                       , cgetbase_raw                    --> extract_1op cgetbase_raw
                       , cgetlen_raw                     --> extract_1op cgetlen_raw
                       , cgettag_raw                     --> extract_1op cgettag_raw
-                      , cgetsealed_raw                  --> extract_1op cgetsealed_raw
+                      -- , cgetsealed_raw                  --> extract_1op cgetsealed_raw -- CHERIoT lacks cgetsealed instr
                       -- , cgetoffset_raw                  --> extract_1op cgetoffset_raw -- CHERIoT lacks cgetoffset instr
-                      , cgetflags_raw                   --> extract_1op cgetflags_raw
+                      -- , cgetflags_raw                   --> extract_1op cgetflags_raw -- CHERIoT lacks cgetflags instr
                       , cgetaddr_raw                    --> extract_1op cgetaddr_raw
                       , cgethigh_raw                    --> extract_1op cgethigh_raw
                       , cseal_raw                       --> extract_2op cseal_raw
@@ -443,10 +454,10 @@ rv32_xcheri_extract = [ cgetperm_raw                    --> extract_1op cgetperm
                       , cincaddr_raw                    --> extract_2op cincaddr_raw      -- CHERIoT replaces cincoffset with cincaddr
                       , csetbounds_raw                  --> extract_2op csetbounds_raw
                       , csetboundsexact_raw             --> extract_2op csetboundsexact_raw
-                      , cbuildcap_raw                   --> extract_2op cbuildcap_raw
-                      , ccopytype_raw                   --> extract_2op ccopytype_raw
-                      , ccseal_raw                      --> extract_2op ccseal_raw
-                      , csealentry_raw                  --> extract_1op csealentry_raw
+                      -- , cbuildcap_raw                   --> extract_2op cbuildcap_raw -- CHERIoT lacks cbuildcap instr
+                      -- , ccopytype_raw                   --> extract_2op ccopytype_raw -- CHERIoT lacks ccopytype instr
+                      -- , ccseal_raw                      --> extract_2op ccseal_raw -- CHERIoT lacks ccseal instr
+                      -- , csealentry_raw                  --> extract_1op csealentry_raw -- CHERIoT lacks csealentry instr
                       , cloadtags_raw                   --> extract_1op cloadtags_raw -- CHERIoT lacks cloadtags instr, disabled using has_nocloadtags rather than code removal
                       , ccleartag_raw                   --> extract_1op ccleartag_raw
                       -- , cincoffsetimmediate_raw         --> extract_imm cincoffsetimmediate_raw -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
@@ -462,14 +473,14 @@ rv32_xcheri_extract = [ cgetperm_raw                    --> extract_1op cgetperm
                       -- , jalr_cap_raw                    --> extract_1op jalr_cap_raw -- CHERIoT lacks jalr_cap (jalr.cap) instr
                       -- , cinvoke_raw                     --> extract_cinvoke -- CHERIoT lacks cinvoke instr
                       , ctestsubset_raw                 --> extract_2op ctestsubset_raw
---                    , clear_raw                       --> noextract -- TODO
---                    , cclear_raw                       --> noextract -- TODO
---                    , fpclear_raw                     --> noextract -- TODO
+--                    , clear_raw                       --> noextract -- TODO -- CHERIoT lacks clear instr
+--                    , cclear_raw                       --> noextract -- TODO -- CHERIoT lacks cclear instr
+--                    , fpclear_raw                     --> noextract -- TODO -- CHERIoT lacks fpclear instr
                       , croundrepresentablelength_raw   --> extract_1op croundrepresentablelength_raw
                       , crepresentablealignmentmask_raw --> extract_1op crepresentablealignmentmask_raw
                       -- , cload_raw                       --> extract_imm cload_raw -- CHERIoT lacks mem loads w/explicit addr
                       -- , cstore_raw                      --> extract_cstore -- CHERIoT lacks mem stores w/explicit addr
-                      , csetflags_raw                   --> extract_2op csetflags_raw
+                      -- , csetflags_raw                   --> extract_2op csetflags_raw -- CHERIoT lacks csetflags instr
                       , csc_raw                         --> extract_nodst csc_raw -- csc formerly known as sq (note: swapped reg order)
                       , clc_raw                         --> extract_imm clc_raw -- clc formerly known as lq
                       ]
@@ -489,14 +500,16 @@ shrink_cgetlen cs rd = [addi rd 0 0, addi rd 0 0xfff, cgetbase rd cs]
 shrink_cgettag :: Integer -> Integer -> [Instruction]
 shrink_cgettag cs rd = [addi rd 0 1, addi rd 0 0]
 
-shrink_cgetsealed :: Integer -> Integer -> [Instruction]
-shrink_cgetsealed cs rd = [addi rd 0 1, addi rd 0 0, cgettype rd cs]
+-- CHERIoT lacks cgetsealed instr
+-- shrink_cgetsealed :: Integer -> Integer -> [Instruction]
+-- shrink_cgetsealed cs rd = [addi rd 0 1, addi rd 0 0, cgettype rd cs]
 
 shrink_cgetoffset :: Integer -> Integer -> [Instruction]
 shrink_cgetoffset cs rd = [addi rd 0 0, cgetaddr rd cs]
 
-shrink_cgetflags :: Integer -> Integer -> [Instruction]
-shrink_cgetflags cs rd = [addi rd 0 0, addi rd 0 1]
+-- CHERIoT lacks cgetflags instr
+-- shrink_cgetflags :: Integer -> Integer -> [Instruction]
+-- shrink_cgetflags cs rd = [addi rd 0 0, addi rd 0 1]
 
 shrink_cgetaddr :: Integer -> Integer -> [Instruction]
 shrink_cgetaddr cs rd = [addi rd cs 0]
@@ -513,9 +526,9 @@ shrink_cap cs cd = [ecall,
                     cgettype cd cs,
                     cgetbase cd cs,
                     cgetlen cd cs,
-                    cgettag cd cs,
+                    cgettag cd cs
                     -- cgetoffset cd cs, -- CHERIoT lacks cgetoffset instr
-                    cgetflags cd cs
+                    -- cgetflags cd cs -- CHERIoT lacks cgetflags instr
                    ]
 
 shrink_capcap :: Integer -> Integer -> Integer -> [Instruction]
@@ -553,9 +566,9 @@ rv32_xcheri_shrink = [ cgetperm_raw                    --> shrink_cgetperm
                      , cgetbase_raw                    --> shrink_cgetbase
                      , cgetlen_raw                     --> shrink_cgetlen
                      , cgettag_raw                     --> shrink_cgettag
-                     , cgetsealed_raw                  --> shrink_cgetsealed
+                    --  , cgetsealed_raw                  --> shrink_cgetsealed -- CHERIoT lacks cgetsealed instr
                     --  , cgetoffset_raw                  --> shrink_cgetoffset -- CHERIoT lacks cgetoffset instr
-                     , cgetflags_raw                   --> shrink_cgetflags
+                    --  , cgetflags_raw                   --> shrink_cgetflags -- CHERIoT lacks cgetflags instr
                      , cgetaddr_raw                    --> shrink_cgetaddr
                      , cgethigh_raw                    --> shrink_cgethigh
                      , cseal_raw                       --> shrink_capcap
@@ -568,10 +581,10 @@ rv32_xcheri_shrink = [ cgetperm_raw                    --> shrink_cgetperm
                      , cincaddr_raw                    --> shrink_capint    -- CHERIoT replaces cincoffset with cincaddr
                      , csetbounds_raw                  --> shrink_capint
                      , csetboundsexact_raw             --> shrink_capint
-                     , cbuildcap_raw                   --> shrink_capcap
-                     , ccopytype_raw                   --> shrink_capcap
-                     , ccseal_raw                      --> shrink_capcap
-                     , csealentry_raw                  --> shrink_cap
+                    --  , cbuildcap_raw                   --> shrink_capcap -- CHERIoT lacks cbuildcap instr
+                    --  , ccopytype_raw                   --> shrink_capcap -- CHERIoT lacks ccopytype instr
+                    --  , ccseal_raw                      --> shrink_capcap -- CHERIoT lacks ccseal instr
+                    --  , csealentry_raw                  --> shrink_cap -- CHERIoT lacks csealentry instr
                      , ccleartag_raw                   --> shrink_cap
                     --  , cincoffsetimmediate_raw         --> shrink_capimm -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
                      , cincaddrimm_raw                 --> shrink_capimm    -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
@@ -586,14 +599,14 @@ rv32_xcheri_shrink = [ cgetperm_raw                    --> shrink_cgetperm
 --                   , jalr_cap_raw                       --> noshrink -- CHERIoT lacks jalr_cap instr
                     --  , cinvoke_raw                     --> shrink_cinvoke -- CHERIoT lacks cinvoke instr
                      , ctestsubset_raw                 --> shrink_ctestsubset
---                   , clear_raw                       --> noshrink
---                   , cclear_raw                      --> noshrink
---                   , fpclear_raw                     --> noshrink
+--                   , clear_raw                       --> noshrink -- CHERIoT lacks clear instr
+--                   , cclear_raw                      --> noshrink -- CHERIoT lacks cclear instr
+--                   , fpclear_raw                     --> noshrink -- CHERIoT lacks fpclear instr
 --                   , croundrepresentablelength_raw   --> noshrink
 --                   , crepresentablealignmentmask_raw --> noshrink
                     --  , cload_raw                       --> shrink_cload -- CHERIoT lacks mem loads w/explicit addr
                     --  , cstore_raw                      --> shrink_cstore -- CHERIoT lacks mem stores w/explicit addr
-                     , csetflags_raw                   --> shrink_capcap
+                    --  , csetflags_raw                   --> shrink_capcap -- CHERIoT lacks csetflags instr
 --                   , csc_raw                         --> noshrink -- csc formerly known as sq (note: swapped reg order)
 --                   , clc_raw                         --> noshrink -- clc formerly known as lq
                      ]
@@ -605,11 +618,11 @@ rv32_xcheri_inspection src dest = [ cgetperm                    dest src
                                   , cgetbase                    dest src
                                   , cgetlen                     dest src
                                   , cgettag                     dest src
-                                  , cgetsealed                  dest src
+                                  -- , cgetsealed                  dest src -- CHERIoT lacks cgetsealed instr
                                   -- , cgetoffset                  dest src -- CHERIoT lacks cgetoffset instr
                                   , cgetaddr                    dest src
                                   , cgethigh                    dest src
-                                  , cgetflags                   dest src
+                                  -- , cgetflags                   dest src -- CHERIoT lacks cgetflags instr
                                   , croundrepresentablelength   dest src
                                   , crepresentablealignmentmask dest src]
 
@@ -637,11 +650,11 @@ rv32_xcheri_misc src1 src2 srcScr imm dest =
   [ cseal       dest src1 src2
   , cunseal     dest src1 src2
   , candperm    dest src1 src2
-  , cbuildcap   dest src1 src2
-  , csetflags   dest src1 src2
-  , ccopytype   dest src1 src2
-  , ccseal      dest src1 src2
-  , csealentry  dest src1
+  -- , cbuildcap   dest src1 src2 -- CHERIoT lacks cbuildcap instr
+  -- , csetflags   dest src1 src2 -- CHERIoT lacks csetflags instr
+  -- , ccopytype   dest src1 src2 -- CHERIoT lacks ccopytype instr
+  -- , ccseal      dest src1 src2 -- CHERIoT lacks ccseal instr
+  -- , csealentry  dest src1 -- CHERIoT lacks csealentry instr
   , ccleartag   dest src1
   , cspecialrw  dest srcScr src1
   , auicgp      dest imm ]

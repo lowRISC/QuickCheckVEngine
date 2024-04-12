@@ -35,8 +35,8 @@
 module QuickCheckVEngine.Templates.GenCHERI (
   capDecodeTest,
   cLoadTagsTest,
-  gen_simple_cclear,
-  gen_simple_fpclear,
+  -- gen_simple_cclear, -- CHERIoT lacks cclear instr
+  -- gen_simple_fpclear, -- CHERIoT lacks fpclear instr
   randomCHERITest,
   randomCHERIRVCTest
 ) where
@@ -79,9 +79,9 @@ capDecodeTest = random $ do
                     inst $ cgetaddr 6 2,
                     inst $ cgethigh 6 2,
                     inst $ cgettype 6 2,
-                    inst $ cgetflags 6 2,
+                    -- inst $ cgetflags 6 2, -- CHERIoT lacks cgetflags instr
                     inst $ cgetperm 6 2,
-                    inst $ cbuildcap 2 3 2,
+                    -- inst $ cbuildcap 2 3 2, -- CHERIoT lacks cbuildcap instr
                     inst $ cgettype 4 2,
                     inst $ cgettag 5 2]
 
@@ -140,27 +140,30 @@ randomCHERIRVCTest = random $ do
                    , repeatN 5 genCHERIinspection
                    ]
 
-gen_simple_cclear :: Template
-gen_simple_cclear = random $ do
-  mask <- bits 8
-  quarter <- bits 2
-  imm  <- bits 12
-  src1 <- src
-  src2 <- src
-  dest <- dest
-  return $ dist [ (4, prepReg64 dest)
-                , (8, gen_rv32_i_arithmetic)
-                , (8, instUniform $ rv64_i_arith src1 src2 dest imm)
-                , (2, inst $ cclear quarter mask)
-                ]
+-- TODO: reimplement for CHERIoT using other instructions instead of cclear
+-- CHERIoT lacks cclear instr
+-- gen_simple_cclear :: Template
+-- gen_simple_cclear = random $ do
+--   mask <- bits 8
+--   quarter <- bits 2
+--   imm  <- bits 12
+--   src1 <- src
+--   src2 <- src
+--   dest <- dest
+--   return $ dist [ (4, prepReg64 dest)
+--                 , (8, gen_rv32_i_arithmetic)
+--                 , (8, instUniform $ rv64_i_arith src1 src2 dest imm)
+--                 , (2, inst $ cclear quarter mask)
+--                 ]
 
-gen_simple_fpclear :: Template
-gen_simple_fpclear = random $ do
-  mask <- bits 8
-  quarter <- bits 2
-  return $ dist [ (8, gen_rv64_fd)
-                , (2, inst $ fpclear quarter mask)
-                ]
+ -- CHERIoT lacks fpclear instr
+-- gen_simple_fpclear :: Template
+-- gen_simple_fpclear = random $ do
+--   mask <- bits 8
+--   quarter <- bits 2
+--   return $ dist [ (8, gen_rv64_fd)
+--                 , (2, inst $ fpclear quarter mask)
+--                 ]
 
 randomCHERITest :: Template
 randomCHERITest = fp_prologue $ repeatTillEnd genRandomCHERITest
