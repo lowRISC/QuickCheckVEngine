@@ -168,11 +168,11 @@ gen_cache conf has_caplen = random $
                                    src2 <- elements [1, 2, 3]
                                    return $ instUniform $ rv64_i_store src1 src2 0)] | (has_xlen_64 conf)]
               ++ [[(2, random $ do srcAddr <- elements [1, 2, 3]
-                                   return $ instSeq [ lq 13 srcAddr 0,
+                                   return $ instSeq [ clc 13 srcAddr 0, -- clc formerly known as lq
                                                       cgettag 13 13])
                   ,(2, random $ do srcData <- elements [1, 2, 3, 4, 5]
                                    srcAddr <- elements [1, 2, 3]
-                                   return $ inst $ sq srcAddr srcData 0)] | has_caplen]
+                                   return $ inst $ csc srcData srcAddr 0)] | has_caplen] -- csc formerly known as sq (note: swapped reg order)
      let prologue = instSeq prologue_list
      return $ prologue
               <> repeatTillEnd (dist $ concat insts)
@@ -211,10 +211,10 @@ gen_pte_perms = random $
                                      <> mconcat [
                                      inst sret,
                                      instUniform [ccleartag 3 3, cmove 3 3],
-                                     instUniform [sw 0 3 16, sq 0 3 16],
-                                     instUniform [lw 4 0 16, lq 4 0 16],
+                                     instUniform [sw 0 3 16, csc 3 0 16], -- csc formerly known as sq (note: swapped reg order)
+                                     instUniform [lw 4 0 16, clc 4 0 16], -- clc formerly known as lq
                                      csrwi (unsafe_csrs_indexFromName "sccsr") (clg1 * 4),
-                                     instUniform [lw 4 0 16, lq 4 0 16],
+                                     instUniform [lw 4 0 16, clc 4 0 16], -- clc formerly known as lq
                                      inst $ cgettag 5 4,
                                      inst ecall]
 
