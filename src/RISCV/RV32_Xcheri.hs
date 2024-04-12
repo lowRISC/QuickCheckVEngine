@@ -100,10 +100,10 @@ module RISCV.RV32_Xcheri (
 , fpclear
 , croundrepresentablelength
 , crepresentablealignmentmask
-, cload
-, cstore
-, lq
-, sq
+-- , cload -- CHERIoT lacks mem loads w/explicit addr
+-- , cstore -- CHERIoT lacks mem stores w/explicit addr
+, clc -- clc formerly known as lq
+, csc -- csc formerly known as sq (note: swapped reg order)
 -- , lr_q -- CHERIoT lacks lr_q (lr.c/q) atomic instr
 -- , sc_q -- CHERIoT lacks sc_q (sc.c/q) atomic instr
 -- , amoswap_q -- CHERIoT lacks amoswap_q (amoswap.c/q) atomic instr
@@ -240,14 +240,18 @@ crepresentablealignmentmask_raw    =                                        "111
 crepresentablealignmentmask rd rs1 = encode crepresentablealignmentmask_raw                rs1          rd
 
 -- Memory -- Needs further refinement
-cload_raw                          =                                        "1111101 mop[4:0] cb[4:0] 000 cd[4:0] 1011011"
-cload cd cb mop                    = encode cload_raw                                mop      cb          cd
-cstore_raw                         =                                        "1111100 rs2[4:0] cs1[4:0] 000 mop[4:0] 1011011"
-cstore rs2 cs1 mop                 = encode cstore_raw                               rs2      cs1          mop
-lq_raw                             =                                        "imm[11:0] rs1[4:0] 010 cd[4:0] 0001111"
-lq cd rs1 imm                      = encode lq_raw                           imm       rs1          cd
-sq_raw                             =                                        "imm[11:5] cs2[4:0] rs1[4:0] 100 imm[4:0] 0100011"
-sq rs1 cs2 imm                     = encode sq_raw                           imm       cs2      rs1
+-- CHERIoT lacks mem loads w/explicit addr
+-- cload_raw                          =                                        "1111101 mop[4:0] cb[4:0] 000 cd[4:0] 1011011"
+-- cload cd cb mop                    = encode cload_raw                                mop      cb          cd
+-- CHERIoT lacks mem stores w/explicit addr
+-- cstore_raw                         =                                        "1111100 rs2[4:0] cs1[4:0] 000 mop[4:0] 1011011"
+-- cstore rs2 cs1 mop                 = encode cstore_raw                               rs2      cs1          mop
+-- clc formerly known as lq
+clc_raw                            =                                        "imm[11:0] cs1[4:0] 011 cd[4:0] 0000011" -- [C]LC in RV32 Xcheri | CLC in CHERIoT
+clc cd cs1 imm                     = encode clc_raw                          imm       cs1          cd
+-- csc formerly known as sq (note: swapped reg order)
+csc_raw                            =                                        "imm[11:5] cs2[4:0] cs1[4:0] 011 imm[4:0] 0100011" -- [C]SC in RV32 Xcheri | CSC in CHERIoT
+csc cs2 cs1 imm                    = encode csc_raw                          imm       cs2      cs1
 -- CHERIoT lacks lr_q (lr.c/q) atomic instr
 -- lr_q_raw                           =                                        "00010 aq[0] rl[0]    00000 rs1[4:0] 011 cd[4:0] 0101111" -- LR.C in RV32 Xcheri
 -- lr_q cd rs1 aq rl                  = encode lr_q_raw                               aq    rl             rs1          cd
@@ -258,69 +262,71 @@ sq rs1 cs2 imm                     = encode sq_raw                           imm
 -- amoswap_q_raw                      =                                        "00001 aq[0] rl[0] cs2[4:0] rs1[4:0] 011 cd[4:0] 0101111" -- AMOSWAP.C in RV32 Xcheri
 -- amoswap_q cd rs1 cs2 aq rl         = encode amoswap_q_raw                          aq    rl    cs2      rs1          cd
 
+-- CHERIoT lacks mem loads w/explicit addr
 -- | Pretty-print a capability load instruction
-prettyCLoad :: Integer -> Integer -> Integer -> String
-prettyCLoad mop rs1 rd =
-  concat [instr, " ", reg rd, ", ", reg rs1, "[0]"]
-    where instr = case mop of 0x00 -> "lb.ddc"
-                              0x01 -> "lh.ddc"
-                              0x02 -> "lw.ddc"
-                              0x03 -> "ld.ddc"
-                              0x04 -> "lbu.ddc"
-                              0x05 -> "lhu.ddc"
-                              0x06 -> "lwu.ddc"
-                              0x07 -> "ldu.ddc"  -- TODO clarify meaning...
-                              0x08 -> "lb.cap"
-                              0x09 -> "lh.cap"
-                              0x0a -> "lw.cap"
-                              0x0b -> "ld.cap"
-                              0x0c -> "lbu.cap"
-                              0x0d -> "lhu.cap"
-                              0x0e -> "lwu.cap"
-                              0x0f -> "ldu.cap"  -- TODO clarify meaning...
-                              0x10 -> "lr.b.ddc"
-                              0x11 -> "lr.h.ddc"
-                              0x12 -> "lr.w.ddc"
-                              0x13 -> "lr.d.ddc"
-                              0x14 -> "lr.q.ddc" -- TODO only valid in rv64
-                              0x15 -> "INVALID"
-                              0x16 -> "INVALID"
-                              0x17 -> "lq.ddc"   -- TODO only valid in rv64
-                              0x18 -> "lr.b.cap"
-                              0x19 -> "lr.h.cap"
-                              0x1a -> "lr.w.cap"
-                              0x1b -> "lr.d.cap"
-                              0x1c -> "lr.q.cap" -- TODO only valid in rv64
-                              0x1d -> "INVALID"
-                              0x1e -> "INVALID"
-                              0x1f -> "lq.cap"   -- TODO only valid in rv64
-                              _    -> "INVALID"
+-- prettyCLoad :: Integer -> Integer -> Integer -> String
+-- prettyCLoad mop rs1 rd =
+--   concat [instr, " ", reg rd, ", ", reg rs1, "[0]"]
+--     where instr = case mop of 0x00 -> "lb.ddc"
+--                               0x01 -> "lh.ddc"
+--                               0x02 -> "lw.ddc"
+--                               0x03 -> "ld.ddc"
+--                               0x04 -> "lbu.ddc"
+--                               0x05 -> "lhu.ddc"
+--                               0x06 -> "lwu.ddc"
+--                               0x07 -> "ldu.ddc"  -- TODO clarify meaning...
+--                               0x08 -> "lb.cap"
+--                               0x09 -> "lh.cap"
+--                               0x0a -> "lw.cap"
+--                               0x0b -> "ld.cap"
+--                               0x0c -> "lbu.cap"
+--                               0x0d -> "lhu.cap"
+--                               0x0e -> "lwu.cap"
+--                               0x0f -> "ldu.cap"  -- TODO clarify meaning...
+--                               0x10 -> "lr.b.ddc"
+--                               0x11 -> "lr.h.ddc"
+--                               0x12 -> "lr.w.ddc"
+--                               0x13 -> "lr.d.ddc"
+--                               0x14 -> "lr.q.ddc" -- TODO only valid in rv64
+--                               0x15 -> "INVALID"
+--                               0x16 -> "INVALID"
+--                               0x17 -> "lq.ddc"   -- TODO only valid in rv64
+--                               0x18 -> "lr.b.cap"
+--                               0x19 -> "lr.h.cap"
+--                               0x1a -> "lr.w.cap"
+--                               0x1b -> "lr.d.cap"
+--                               0x1c -> "lr.q.cap" -- TODO only valid in rv64
+--                               0x1d -> "INVALID"
+--                               0x1e -> "INVALID"
+--                               0x1f -> "lq.cap"   -- TODO only valid in rv64
+--                               _    -> "INVALID"
 
+-- CHERIoT lacks mem stores w/explicit addr
 -- | Pretty-print a capability store instruction
-prettyCStore :: Integer -> Integer -> Integer -> String
-prettyCStore rs2 rs1 mop =
-  concat [instr, " ", reg rs2, ", ", reg rs1, "[0]"]
-    where instr = case mop of 0x00 -> "sb.ddc"
-                              0x01 -> "sh.ddc"
-                              0x02 -> "sw.ddc"
-                              0x03 -> "sd.ddc"
-                              0x04 -> "sq.ddc"   -- TODO only valid in rv64
-                              0x08 -> "sb.cap"
-                              0x09 -> "sh.cap"
-                              0x0a -> "sw.cap"
-                              0x0b -> "sd.cap"
-                              0x0c -> "sq.cap"   -- TODO only valid in rv64
-                              0x10 -> "sc.b.ddc"
-                              0x11 -> "sc.h.ddc"
-                              0x12 -> "sc.w.ddc"
-                              0x13 -> "sc.d.ddc"
-                              0x14 -> "sc.q.ddc" -- TODO only valid in rv64
-                              0x18 -> "sc.b.cap"
-                              0x19 -> "sc.h.cap"
-                              0x1a -> "sc.w.cap"
-                              0x1b -> "sc.d.cap"
-                              0x1c -> "sc.q.cap" -- TODO only valid in rv64
-                              _ -> "INVALID"
+-- prettyCStore :: Integer -> Integer -> Integer -> String
+-- prettyCStore rs2 rs1 mop =
+--   concat [instr, " ", reg rs2, ", ", reg rs1, "[0]"]
+--     where instr = case mop of 0x00 -> "sb.ddc"
+--                               0x01 -> "sh.ddc"
+--                               0x02 -> "sw.ddc"
+--                               0x03 -> "sd.ddc"
+--                               0x04 -> "sq.ddc"   -- TODO only valid in rv64
+--                               0x08 -> "sb.cap"
+--                               0x09 -> "sh.cap"
+--                               0x0a -> "sw.cap"
+--                               0x0b -> "sd.cap"
+--                               0x0c -> "sq.cap"   -- TODO only valid in rv64
+--                               0x10 -> "sc.b.ddc"
+--                               0x11 -> "sc.h.ddc"
+--                               0x12 -> "sc.w.ddc"
+--                               0x13 -> "sc.d.ddc"
+--                               0x14 -> "sc.q.ddc" -- TODO only valid in rv64
+--                               0x18 -> "sc.b.cap"
+--                               0x19 -> "sc.h.cap"
+--                               0x1a -> "sc.w.cap"
+--                               0x1b -> "sc.d.cap"
+--                               0x1c -> "sc.q.cap" -- TODO only valid in rv64
+--                               _ -> "INVALID"
 
 -- | Pretty-print a register clear instruction
 pretty_reg_clear instr imm qt = concat [instr, " ", int qt, ", ", int imm]
@@ -392,12 +398,12 @@ rv32_xcheri_disass = [ cgetperm_raw                    --> prettyR_2op "cgetperm
                      , fpclear_raw                     --> pretty_reg_clear "fpclear"
                      , croundrepresentablelength_raw   --> prettyR_2op "croundrepresentablelength"
                      , crepresentablealignmentmask_raw --> prettyR_2op "crepresentablealignmentmask"
-                     , cload_raw                       --> prettyCLoad
-                     , cstore_raw                      --> prettyCStore
+                    --  , cload_raw                       --> prettyCLoad -- CHERIoT lacks mem loads w/explicit addr
+                    --  , cstore_raw                      --> prettyCStore -- CHERIoT lacks mem stores w/explicit addr
                      , cgetflags_raw                   --> prettyR_2op "cgetflags"
                      , csetflags_raw                   --> prettyR "csetflags"
-                     , sq_raw                          --> prettyS "sq"
-                     , lq_raw                          --> prettyL "lq" ]
+                     , csc_raw                         --> prettyS "csc" -- csc formerly known as sq (note: swapped reg order)
+                     , clc_raw                         --> prettyL "clc" ] -- clc formerly known as lq
                     --  , lr_q_raw                        --> prettyR_A_1op "lr.q" -- CHERIoT lacks lr_q (lr.c/q) atomic instr
                     --  , sc_q_raw                        --> prettyR_A "sc.q" -- CHERIoT lacks sc_q (sc.c/q) atomic instr
 
@@ -411,8 +417,9 @@ extract_cmove rs1 rd = (True, Nothing, Just rs1, Just rd, \x y z -> encode cmove
 -- extract_cinvoke :: Integer -> Integer -> ExtractedRegs
 -- extract_cinvoke rs2 rs1 = (False, Just rs2, Just rs1, Just 31, \x y z -> encode cinvoke_raw x y)
 
-extract_cstore :: Integer -> Integer -> Integer -> ExtractedRegs
-extract_cstore rs2 rs1 mop = (False, Just rs2, Just rs1, Nothing, \x y z -> encode cstore_raw x y mop)
+-- CHERIoT lacks mem stores w/explicit addr
+-- extract_cstore :: Integer -> Integer -> Integer -> ExtractedRegs
+-- extract_cstore rs2 rs1 mop = (False, Just rs2, Just rs1, Nothing, \x y z -> encode cstore_raw x y mop)
 
 rv32_xcheri_extract :: [DecodeBranch ExtractedRegs]
 rv32_xcheri_extract = [ cgetperm_raw                    --> extract_1op cgetperm_raw
@@ -459,11 +466,11 @@ rv32_xcheri_extract = [ cgetperm_raw                    --> extract_1op cgetperm
 --                    , fpclear_raw                     --> noextract -- TODO
                       , croundrepresentablelength_raw   --> extract_1op croundrepresentablelength_raw
                       , crepresentablealignmentmask_raw --> extract_1op crepresentablealignmentmask_raw
-                      , cload_raw                       --> extract_imm cload_raw
-                      , cstore_raw                      --> extract_cstore
+                      -- , cload_raw                       --> extract_imm cload_raw -- CHERIoT lacks mem loads w/explicit addr
+                      -- , cstore_raw                      --> extract_cstore -- CHERIoT lacks mem stores w/explicit addr
                       , csetflags_raw                   --> extract_2op csetflags_raw
-                      , sq_raw                          --> extract_nodst sq_raw
-                      , lq_raw                          --> extract_imm lq_raw
+                      , csc_raw                         --> extract_nodst csc_raw -- csc formerly known as sq (note: swapped reg order)
+                      , clc_raw                         --> extract_imm clc_raw -- clc formerly known as lq
                       ]
 
 shrink_cgetperm :: Integer -> Integer -> [Instruction]
@@ -531,11 +538,13 @@ shrink_ctestsubset cs2 cs1 rd = [addi rd 0 0, addi rd 0 1] ++ shrink_capcap cs2 
 -- CHERIoT lacks cfromptr instr
 -- shrink_cfromptr rs cs cd = [csetoffset cd cs rs] ++ shrink_capint rs cs cd
 
-shrink_cload :: Integer -> Integer -> Integer -> [Instruction]
-shrink_cload cb cd mop = [addi 0 0 0];
+-- CHERIoT lacks mem loads w/explicit addr
+-- shrink_cload :: Integer -> Integer -> Integer -> [Instruction]
+-- shrink_cload cb cd mop = [addi 0 0 0];
 
-shrink_cstore :: Integer -> Integer -> Integer -> [Instruction]
-shrink_cstore rs2 cs1 mop = [addi 0 0 0];
+-- CHERIoT lacks mem stores w/explicit addr
+-- shrink_cstore :: Integer -> Integer -> Integer -> [Instruction]
+-- shrink_cstore rs2 cs1 mop = [addi 0 0 0];
 
 rv32_xcheri_shrink :: [DecodeBranch [Instruction]]
 rv32_xcheri_shrink = [ cgetperm_raw                    --> shrink_cgetperm
@@ -581,11 +590,11 @@ rv32_xcheri_shrink = [ cgetperm_raw                    --> shrink_cgetperm
 --                   , fpclear_raw                     --> noshrink
 --                   , croundrepresentablelength_raw   --> noshrink
 --                   , crepresentablealignmentmask_raw --> noshrink
-                     , cload_raw                       --> shrink_cload
-                     , cstore_raw                      --> shrink_cstore
+                    --  , cload_raw                       --> shrink_cload -- CHERIoT lacks mem loads w/explicit addr
+                    --  , cstore_raw                      --> shrink_cstore -- CHERIoT lacks mem stores w/explicit addr
                      , csetflags_raw                   --> shrink_capcap
---                   , sq_raw                          --> noshrink
---                   , lq_raw                          --> noshrink
+--                   , csc_raw                         --> noshrink -- csc formerly known as sq (note: swapped reg order)
+--                   , clc_raw                         --> noshrink -- clc formerly known as lq
                      ]
 
 -- | List of cheri inspection instructions
@@ -644,38 +653,38 @@ rv32_xcheri_misc src1 src2 srcScr imm dest =
 -- | List of cheri memory instructions
 rv32_xcheri_mem :: ArchDesc -> Integer -> Integer -> Integer -> Integer -> Integer -> [Instruction]
 rv32_xcheri_mem    arch srcAddr srcData imm mop dest =
-  [ cload  dest    srcAddr         mop
-  , cstore         srcData srcAddr mop
+  [ -- cload  dest    srcAddr         mop -- CHERIoT lacks mem loads w/explicit addr
+  -- , cstore         srcData srcAddr mop -- CHERIoT lacks mem stores w/explicit addr
   --, ld     dest srcAddr dest        imm
   --, sd          srcAddr srcData     imm
-  --, lq     dest srcAddr dest        imm
-  --, sq          srcAddr srcData     imm
+  --, clc    dest srcAddr dest        imm -- clc formerly known as lq
+  --, csc    srcData srcAddr          imm -- csc formerly known as sq (note: swapped reg order)
   ]
   ++ [cloadtags dest srcAddr | not $ has_nocloadtags arch]
 
 -- | List of cheri memory instructions
 rv32_a_xcheri :: Integer -> Integer -> Integer -> [Instruction]
 rv32_a_xcheri      srcAddr srcData dest =
-  [ cload  dest    srcAddr         0x10 -- lr.b.ddc
-  , cload  dest    srcAddr         0x11 -- lr.h.ddc
-  , cload  dest    srcAddr         0x12 -- lr.w.ddc
-  , cload  dest    srcAddr         0x13 -- lr.d.ddc
-  , cload  dest    srcAddr         0x14 -- lr.q.ddc
-  , cload  dest    srcAddr         0x18 -- lr.b.cap
-  , cload  dest    srcAddr         0x19 -- lr.h.cap
-  , cload  dest    srcAddr         0x1a -- lr.w.cap
-  , cload  dest    srcAddr         0x1b -- lr.d.cap
-  , cload  dest    srcAddr         0x1c -- lr.q.cap
-  , cstore         srcData srcAddr 0x10 -- sc.b.ddc
-  , cstore         srcData srcAddr 0x11 -- sc.h.ddc
-  , cstore         srcData srcAddr 0x12 -- sc.w.ddc
-  , cstore         srcData srcAddr 0x13 -- sc.d.ddc
-  , cstore         srcData srcAddr 0x14 -- sc.q.ddc
-  , cstore         srcData srcAddr 0x18 -- sc.b.cap
-  , cstore         srcData srcAddr 0x19 -- sc.h.cap
-  , cstore         srcData srcAddr 0x1a -- sc.w.cap
-  , cstore         srcData srcAddr 0x1b -- sc.d.cap
-  , cstore         srcData srcAddr 0x1c -- sc.q.cap
+  [ -- cload  dest    srcAddr         0x10 -- lr.b.ddc -- CHERIoT lacks mem loads w/explicit addr
+  -- , cload  dest    srcAddr         0x11 -- lr.h.ddc -- CHERIoT lacks mem loads w/explicit addr
+  -- , cload  dest    srcAddr         0x12 -- lr.w.ddc -- CHERIoT lacks mem loads w/explicit addr
+  -- , cload  dest    srcAddr         0x13 -- lr.d.ddc -- CHERIoT lacks mem loads w/explicit addr
+  -- , cload  dest    srcAddr         0x14 -- lr.q.ddc -- CHERIoT lacks mem loads w/explicit addr
+  -- , cload  dest    srcAddr         0x18 -- lr.b.cap -- CHERIoT lacks mem loads w/explicit addr
+  -- , cload  dest    srcAddr         0x19 -- lr.h.cap -- CHERIoT lacks mem loads w/explicit addr
+  -- , cload  dest    srcAddr         0x1a -- lr.w.cap -- CHERIoT lacks mem loads w/explicit addr
+  -- , cload  dest    srcAddr         0x1b -- lr.d.cap -- CHERIoT lacks mem loads w/explicit addr
+  -- , cload  dest    srcAddr         0x1c -- lr.q.cap -- CHERIoT lacks mem loads w/explicit addr
+  -- , cstore         srcData srcAddr 0x10 -- sc.b.ddc -- CHERIoT lacks mem stores w/explicit addr
+  -- , cstore         srcData srcAddr 0x11 -- sc.h.ddc -- CHERIoT lacks mem stores w/explicit addr
+  -- , cstore         srcData srcAddr 0x12 -- sc.w.ddc -- CHERIoT lacks mem stores w/explicit addr
+  -- , cstore         srcData srcAddr 0x13 -- sc.d.ddc -- CHERIoT lacks mem stores w/explicit addr
+  -- , cstore         srcData srcAddr 0x14 -- sc.q.ddc -- CHERIoT lacks mem stores w/explicit addr
+  -- , cstore         srcData srcAddr 0x18 -- sc.b.cap -- CHERIoT lacks mem stores w/explicit addr
+  -- , cstore         srcData srcAddr 0x19 -- sc.h.cap -- CHERIoT lacks mem stores w/explicit addr
+  -- , cstore         srcData srcAddr 0x1a -- sc.w.cap -- CHERIoT lacks mem stores w/explicit addr
+  -- , cstore         srcData srcAddr 0x1b -- sc.d.cap -- CHERIoT lacks mem stores w/explicit addr
+  -- , cstore         srcData srcAddr 0x1c -- sc.q.cap -- CHERIoT lacks mem stores w/explicit addr
   ]
 
 -- | List of cheri instructions

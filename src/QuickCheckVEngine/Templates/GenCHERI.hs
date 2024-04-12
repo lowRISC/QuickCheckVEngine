@@ -72,7 +72,7 @@ capDecodeTest = random $ do
                     inst $ sw 1 2 8,
                     li32 2 ((shift cap (-96)) Data.Bits..&. 0xffffffff),
                     inst $ sw 1 2 12,
-                    inst $ lq 2 1 0,
+                    inst $ clc 2 1 0, -- clc formerly known as lq
                     inst $ cgetlen 6 2,
                     -- inst $ cgetoffset 6 2, -- CHERIoT lacks cgetoffset instr
                     inst $ cgetbase 6 2,

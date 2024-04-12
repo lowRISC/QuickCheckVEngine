@@ -41,7 +41,7 @@ module QuickCheckVEngine.Templates.Utils.CHERI (
 , makeShortCap
 , legalCapLoad
 , legalCapStore
-, loadRegion
+-- , loadRegion -- Unused, so not fully updating for CHERIoT
 -- , switchEncodingMode
 , cspecialRWChain
 , tagCacheTest
@@ -140,7 +140,8 @@ legalCapLoad addrReg targetReg = random $ do
                    , lui tmpReg 0x40004
                    , slli tmpReg tmpReg 1
                    , add addrReg tmpReg addrReg
-                   , cload targetReg addrReg 0x17 ]
+                  --  , cload targetReg addrReg 0x17 -- CHERIoT lacks mem loads w/explicit addr, replace lc.ddc (0x17) with clc
+                   , clc targetReg addrReg 0]        -- CHERIoT lacks mem loads w/explicit addr, replace lc.ddc (0x17) with clc
 
 legalCapStore :: Integer -> Template
 legalCapStore addrReg = random $ do
@@ -150,7 +151,8 @@ legalCapStore addrReg = random $ do
                    , lui tmpReg 0x40004
                    , slli tmpReg tmpReg 1
                    , add addrReg tmpReg addrReg
-                   , cstore dataReg addrReg 0x4 ]
+                  --  , cstore dataReg addrReg 0x4 -- CHERIoT lacks mem stores w/explicit addr, replace sc.ddc (0x04) with csc
+                   , csc dataReg addrReg 0]        -- CHERIoT lacks mem stores w/explicit addr, replace sc.ddc (0x04) with csc
 
 loadTags :: Integer -> Integer -> Template
 loadTags addrReg capReg = random $ do
@@ -179,17 +181,17 @@ loadTags addrReg capReg = random $ do
           --  <> inst (cincoffsetimmediate addrReg addrReg (4096 - (16 * 5))) -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
            <> inst (cincaddrimm addrReg addrReg (4096 - (16 * 5)))            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
            <> inst (cloadtags dataReg addrReg)
-              where maybeCapStore addrReg capReg tmpReg = instUniform [ sq addrReg capReg 0
-                                                                      , sq addrReg tmpReg 0 ]
+              where maybeCapStore addrReg capReg tmpReg = instUniform [ csc capReg addrReg 0   -- csc formerly known as sq (note: swapped reg order)
+                                                                      , csc tmpReg addrReg 0 ] -- csc formerly known as sq (note: swapped reg order)
 
-
-loadRegion ::  Integer -> Integer -> Integer -> Integer -> Template -> Template
-loadRegion numLines capReg cacheLSize tmpReg insts =
-   if numLines == 0 then insts
-   else if numLines == 1 then mconcat [insts, inst (cload tmpReg capReg 0x0)]
-   -- TODO confirm that cincaddrimm is a suitable substitution for cincoffsetimmediate for whatever this test is doing
-  --  else loadRegion (numLines - 1) capReg cacheLSize tmpReg (mconcat [insts, inst (cload tmpReg capReg 0x0), inst (cincoffsetimmediate capReg capReg cacheLSize)]) -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
-   else loadRegion (numLines - 1) capReg cacheLSize tmpReg (mconcat [insts, inst (cload tmpReg capReg 0x0), inst (cincaddrimm capReg capReg cacheLSize)])            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+-- Unused, so not fully updating for CHERIoT
+-- loadRegion ::  Integer -> Integer -> Integer -> Integer -> Template -> Template
+-- loadRegion numLines capReg cacheLSize tmpReg insts =
+--    if numLines == 0 then insts
+--    else if numLines == 1 then mconcat [insts, inst (cload tmpReg capReg 0x0)]
+--    -- TODO confirm that cincaddrimm is a suitable substitution for cincoffsetimmediate for whatever this test is doing
+--   --  else loadRegion (numLines - 1) capReg cacheLSize tmpReg (mconcat [insts, inst (cload tmpReg capReg 0x0), inst (cincoffsetimmediate capReg capReg cacheLSize)]) -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
+--    else loadRegion (numLines - 1) capReg cacheLSize tmpReg (mconcat [insts, inst (cload tmpReg capReg 0x0), inst (cincaddrimm capReg capReg cacheLSize)])            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
 
 -- Only pure CHERI mode in CHERIoT
 -- switchEncodingMode :: Template
