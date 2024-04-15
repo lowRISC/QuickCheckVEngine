@@ -88,8 +88,8 @@ module RISCV.RV32_I (
 , fence_tso
 , resrvd
 , mret
-, sret
-, uret
+-- , sret -- CHERIoT lacks privileged instructions
+-- , uret -- CHERIoT lacks privileged instructions
 , ecall
 , ebreak
 , sfence
@@ -211,10 +211,12 @@ resrvd_raw       =                   "0000 0000 0000 00000 000 00000 0000000"
 resrvd           = encode resrvd_raw
 mret_raw         =                   "0011 0000 0010 00000 000 00000 1110011"
 mret             = encode mret_raw
-sret_raw         =                   "0001 0000 0010 00000 000 00000 1110011"
-sret             = encode sret_raw
-uret_raw         =                   "0000 0000 0010 00000 000 00000 1110011"
-uret             = encode uret_raw
+-- CHERIoT lacks privileged instructions
+-- sret_raw         =                   "0001 0000 0010 00000 000 00000 1110011"
+-- sret             = encode sret_raw
+-- CHERIoT lacks privileged instructions
+-- uret_raw         =                   "0000 0000 0010 00000 000 00000 1110011"
+-- uret             = encode uret_raw
 ecall_raw        =                   "000000000000 00000 000 00000 1110011"
 ecall            = encode ecall_raw
 ebreak_raw       =                   "000000000001 00000 000 00000 1110011"
@@ -265,8 +267,8 @@ rv32_i_disass = [ add_raw    --> prettyR "add"
                 , fence_tso_raw --> "fence.tso"
                 , resrvd_raw --> "reserved"
                 , mret_raw   --> "mret"
-                , sret_raw   --> "sret"
-                , uret_raw   --> "uret"
+                -- , sret_raw   --> "sret" -- CHERIoT lacks privileged instructions
+                -- , uret_raw   --> "uret" -- CHERIoT lacks privileged instructions
                 , ecall_raw  --> "ecall"
                 , ebreak_raw --> "ebreak"
                 , sfence_raw --> prettySfence ]
@@ -332,8 +334,8 @@ rv32_i_extract = [ add_raw    --> extract_2op add_raw
 --               , fence_tso_raw --> noextract
 --               , resrvd_raw --> noextract
 --               , mret_raw   --> noextract
---               , sret_raw   --> noextract
---               , uret_raw   --> noextract
+--               , sret_raw   --> noextract -- CHERIoT lacks privileged instructions
+--               , uret_raw   --> noextract -- CHERIoT lacks privileged instructions
 --               , ecall_raw  --> noextract
 --               , ebreak_raw --> noextract
 --               , sfence_raw --> noextract
@@ -407,8 +409,8 @@ rv32_i_shrink = [ add_raw    --> shrink_arith
 --              , fence_tso_raw --> noshrink
                 , resrvd_raw --> shrink_illegal
                 , mret_raw   --> shrink_illegal
-                , sret_raw   --> shrink_illegal
-                , uret_raw   --> shrink_illegal
+                -- , sret_raw   --> shrink_illegal -- CHERIoT lacks privileged instructions
+                -- , uret_raw   --> shrink_illegal -- CHERIoT lacks privileged instructions
 --              , ecall_raw  --> noshrink
                 , ebreak_raw --> shrink_illegal ]
 
@@ -460,8 +462,8 @@ rv32_i_ctrl_branches src1 src2 imm = [ beq  src1 src2 imm
 rv32_i_exc :: [Instruction]
 rv32_i_exc = [ ecall
              , mret
-             , sret
-             , uret
+            --  , sret -- CHERIoT lacks privileged instructions
+            --  , uret -- CHERIoT lacks privileged instructions
              , ebreak
              , resrvd ]
 
