@@ -40,7 +40,7 @@ module QuickCheckVEngine.Templates.GenTransExec (
 -- , gen_csc_inst_verify -- CHERIoT Ibex is not very speculative & test is hard to adapt, so disable for now
 , gen_bsc_jumps_verify
 , gen_bsc_exceptions_verify
-, gen_tsc_verify
+-- , gen_tsc_verify -- CHERIoT lacks supervisor mode
 ) where
 
 import InstrCodec
@@ -188,24 +188,25 @@ genMOSC_Torture arch tmpReg = random $ do
                    ]
 
 
-genTSCTorture :: Template
-genTSCTorture = random $ do
-  imm_bits <- bits 10
-  longImm <- bits 20
-  src1 <- choose(16,18)
-  src2 <- sbcRegs
-  dest <- sbcRegs
-  let fenceOp1 = 19
-  let fenceOp2 = 20
-  let sstatus = unsafe_csrs_indexFromName "sstatus"
-  let imm = (imm_bits `shiftR` 3) `shiftL` 3
-  let access_inst = uniform [ instUniform $ rv64_i_mem src1 src2 dest imm
-                            , instUniform $ rv32_i_mem src1 src2 dest imm fenceOp1 fenceOp2
-                            ]
-  return $ mconcat [ access_inst
-                   , csrr src2 sstatus
-                   , inst $ sret
-                   ]
+-- CHERIoT lacks supervisor mode
+-- genTSCTorture :: Template
+-- genTSCTorture = random $ do
+--   imm_bits <- bits 10
+--   longImm <- bits 20
+--   src1 <- choose(16,18)
+--   src2 <- sbcRegs
+--   dest <- sbcRegs
+--   let fenceOp1 = 19
+--   let fenceOp2 = 20
+--   let sstatus = unsafe_csrs_indexFromName "sstatus"
+--   let imm = (imm_bits `shiftR` 3) `shiftL` 3
+--   let access_inst = uniform [ instUniform $ rv64_i_mem src1 src2 dest imm
+--                             , instUniform $ rv32_i_mem src1 src2 dest imm fenceOp1 fenceOp2
+--                             ]
+--   return $ mconcat [ access_inst
+--                    , csrr src2 sstatus
+--                    , inst $ sret -- CHERIoT lacks supervisor mode
+--                    ]
 
 prepareBSCExcpsGen :: Template
 prepareBSCExcpsGen = random $ do
@@ -247,54 +248,55 @@ setUpPageTable = random $ do
                    , inst $ sd a0 t0 40
                    ]
 
-prepareTSCGen :: Template
-prepareTSCGen = random $ do
-  let s0 = 8
-  let s1 = 9
-  let s2 = 18
-  let counterReg = 30
-  let hpmCntIdx = 3
-  let evt = 0x31
-  let mstatus = unsafe_csrs_indexFromName "mstatus"
-  let sstatus = unsafe_csrs_indexFromName "sstatus"
-  let mepc = unsafe_csrs_indexFromName "mepc"
-  let sepc = unsafe_csrs_indexFromName "sepc"
-  let satp = unsafe_csrs_indexFromName "satp"
-  let medeleg = unsafe_csrs_indexFromName "medeleg"
-  let sedeleg = unsafe_csrs_indexFromName "sedeleg"
-  let stval = unsafe_csrs_indexFromName "stval"
-  return $ mconcat [ inst $ lui s1 0x100
-                   ,        csrc mstatus s1
-                   , inst $ lui s1 0x1
-                   ,        csrc mstatus s1
-                   , inst $ lui s1 0x1
-                   , inst $ addi s1 s1 0x800
-                   ,        csrs mstatus s1
-                   , inst $ auipc s2 0
-                   , inst $ addi s2 s2 16
-                   ,        csrw mepc s2
-                   , inst $ lui s2 0xa
-                   ,        csrw medeleg s2
-                   ,        setUpPageTable
-                   ,        setupHPMEventSel counterReg hpmCntIdx evt
-                   ,        enableHPMCounterM counterReg hpmCntIdx
-                   , inst $ mret
-                   , inst $ lui s0 0xfffe0
-                   , inst $ addi s0 s0 1
-                   , inst $ slli s0 s0 0x1b
-                   , inst $ addi s0 s0 1
-                   , inst $ slli s0 s0 0x13
-                   , inst $ addi s0 s0 2
-                   ,        csrw satp s0
-                   , inst $ addi s1 s1 256
-                   ,        csrc sstatus s1
-                   , inst $ lui s2 2
-                   ,        enableHPMCounterS counterReg hpmCntIdx
-                   ,        li64 s2 0x80004000
-                   ,        csrw sepc s2
-                   ,        csrw stval s2
-                   , inst $ sret
-                   ]
+-- CHERIoT lacks supervisor mode
+-- prepareTSCGen :: Template
+-- prepareTSCGen = random $ do
+--   let s0 = 8
+--   let s1 = 9
+--   let s2 = 18
+--   let counterReg = 30
+--   let hpmCntIdx = 3
+--   let evt = 0x31
+--   let mstatus = unsafe_csrs_indexFromName "mstatus"
+--   let sstatus = unsafe_csrs_indexFromName "sstatus"
+--   let mepc = unsafe_csrs_indexFromName "mepc"
+--   let sepc = unsafe_csrs_indexFromName "sepc"
+--   let satp = unsafe_csrs_indexFromName "satp"
+--   let medeleg = unsafe_csrs_indexFromName "medeleg"
+--   let sedeleg = unsafe_csrs_indexFromName "sedeleg"
+--   let stval = unsafe_csrs_indexFromName "stval"
+--   return $ mconcat [ inst $ lui s1 0x100
+--                    ,        csrc mstatus s1
+--                    , inst $ lui s1 0x1
+--                    ,        csrc mstatus s1
+--                    , inst $ lui s1 0x1
+--                    , inst $ addi s1 s1 0x800
+--                    ,        csrs mstatus s1
+--                    , inst $ auipc s2 0
+--                    , inst $ addi s2 s2 16
+--                    ,        csrw mepc s2
+--                    , inst $ lui s2 0xa
+--                    ,        csrw medeleg s2
+--                    ,        setUpPageTable
+--                    ,        setupHPMEventSel counterReg hpmCntIdx evt
+--                    ,        enableHPMCounterM counterReg hpmCntIdx
+--                    , inst $ mret
+--                    , inst $ lui s0 0xfffe0
+--                    , inst $ addi s0 s0 1
+--                    , inst $ slli s0 s0 0x1b
+--                    , inst $ addi s0 s0 1
+--                    , inst $ slli s0 s0 0x13
+--                    , inst $ addi s0 s0 2
+--                    ,        csrw satp s0
+--                    , inst $ addi s1 s1 256
+--                    ,        csrc sstatus s1
+--                    , inst $ lui s2 2
+--                    ,        enableHPMCounterS counterReg hpmCntIdx
+--                    ,        li64 s2 0x80004000
+--                    ,        csrw sepc s2
+--                    ,        csrw stval s2
+--                    , inst $ sret -- CHERIoT lacks supervisor mode
+--                    ]
 
 -- CHERIoT Ibex is not very speculative & test is hard to adapt, so disable for now
 -- | Verify Data Capability Speculation Constraint (CSC)
@@ -477,26 +479,27 @@ gen_bsc_exceptions_verify = random $ do
   let epilog = instAssert (add counterReg counterReg zeroReg) 0
   return $ shrinkScope $ noShrink prolog <> body <> noShrink epilog
 
+-- CHERIoT lacks supervisor mode
 -- | Verify Translation Speculation Constraint (TSC)
-gen_tsc_verify = random $ do
-  let lxReg = 1
-  let addrReg = 2
-  let tmpReg = 31
-  let counterReg = 30
-  let addrReg1 = 16
-  let addrReg2 = 17
-  let addrReg3 = 18
-  let hpmCntIdx_dcache_miss = 3
-  let hpmEventIdx_dcache_miss = 0x31
-  let uepc = unsafe_csrs_indexFromName "uepc"
-  let cntrIdx = hpmcounter_idx_to_counter_csr_idx 3
-  let prolog = mconcat [ prepareTSCGen
-                       , inst $ sfence 0 0
-                       , li64 addrReg1 0x80001800
-                       , li64 addrReg2 0x80012000
-                       , li64 addrReg3 0x80008000
-                       , csrr tmpReg cntrIdx ]
-  let body = repeatN (20) (genTSCTorture)
-  let epilog = mconcat [ csrr counterReg cntrIdx
-                       , instAssert (sub counterReg counterReg tmpReg) 0 ]
-  return $ shrinkScope $ noShrink prolog <> body <> noShrink epilog
+-- gen_tsc_verify = random $ do
+--   let lxReg = 1
+--   let addrReg = 2
+--   let tmpReg = 31
+--   let counterReg = 30
+--   let addrReg1 = 16
+--   let addrReg2 = 17
+--   let addrReg3 = 18
+--   let hpmCntIdx_dcache_miss = 3
+--   let hpmEventIdx_dcache_miss = 0x31
+--   let uepc = unsafe_csrs_indexFromName "uepc"
+--   let cntrIdx = hpmcounter_idx_to_counter_csr_idx 3
+--   let prolog = mconcat [ prepareTSCGen
+--                        , inst $ sfence 0 0
+--                        , li64 addrReg1 0x80001800
+--                        , li64 addrReg2 0x80012000
+--                        , li64 addrReg3 0x80008000
+--                        , csrr tmpReg cntrIdx ]
+--   let body = repeatN (20) (genTSCTorture)
+--   let epilog = mconcat [ csrr counterReg cntrIdx
+--                        , instAssert (sub counterReg counterReg tmpReg) 0 ]
+--   return $ shrinkScope $ noShrink prolog <> body <> noShrink epilog

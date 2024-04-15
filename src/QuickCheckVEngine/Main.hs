@@ -227,7 +227,7 @@ allTests = [
            , ("bsc_cond_1", "BSC Condition 1 Verification",                           andPs [has_cheri, has_icsr, has_ihpm, has_xlen_64], gen_bsc_cond_1_verify)
            , ("bsc_jumps",  "BSC Jumps Verification",                                 andPs [has_cheri, has_icsr, has_ihpm, has_xlen_64], gen_bsc_jumps_verify)
            , ("bsc_excps",  "BSC Exceptions Verification",                            andPs [has_cheri, has_icsr, has_ihpm, has_xlen_64], gen_bsc_exceptions_verify)
-           , ("tsc",        "TSC Verification",                                       andPs [has_s, has_icsr, has_ihpm, has_xlen_64],     gen_tsc_verify)
+          --  , ("tsc",        "TSC Verification",                                       andPs [has_s, has_icsr, has_ihpm, has_xlen_64],     gen_tsc_verify) -- CHERIoT lacks supervisor mode
           --  , ("csc_inst",   "Instruction CSC Verification",                           andPs [has_cheri, has_icsr, has_ihpm, has_xlen_64], gen_csc_inst_verify) -- CHERIoT Ibex is not very speculative & test is hard to adapt, so disable for now
           --  , ("cclear",     "CClear Verification",                                    andPs [has_cheri, has_xlen_64],                     gen_simple_cclear) -- CHERIoT lacks cclear instr
           --  , ("fpclear",    "FPClear Verification",                                   andPs [has_cheri, has_xlen_64, has_d],              gen_simple_fpclear) -- CHERIoT lacks fpclear instr
@@ -253,7 +253,7 @@ allTests = [
            , ("csr",        "Zicsr Extension Verification",                           has_icsr,                                 T.repeatTillEnd gen_rv32_i_zicsr)
            , ("fencei",     "Zifencei Extension Verification",                        has_ifencei,                              T.repeatTillEnd gen_rv32_i_zifencei_memory)
            , ("fencei64",   "RV64 Zifencei Extension Verification",                   andPs [has_ifencei, has_xlen_64],         T.repeatTillEnd gen_rv64_i_zifencei_memory)
-           , ("pte",        "PTE Verification",                                       has_s,                                    T.repeatN 2 $ T.uniform [gen_pte_perms, gen_pte_trans])
+          --  , ("pte",        "PTE Verification",                                       has_s,                                    T.repeatN 2 $ T.uniform [gen_pte_perms, gen_pte_trans]) -- CHERIoT lacks supervisor mode
            , ("hpm",        "HPM Verification",                                       andPs [has_icsr, has_ihpm],               T.repeatTillEnd genHPM)
            , ("capinspect", "Xcheri Extension Capability Inspection Verification",    has_cheri,                                T.repeatTillEnd genCHERIinspection)
            , ("caparith",   "Xcheri Extension Capability Arithmetic Verification",    has_cheri,                                T.repeatTillEnd genCHERIarithmetic)

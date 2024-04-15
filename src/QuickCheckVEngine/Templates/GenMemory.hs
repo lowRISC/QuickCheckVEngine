@@ -45,10 +45,10 @@ module QuickCheckVEngine.Templates.GenMemory (
 , gen_rv64_i_cache
 , gen_rv32_Xcheri_cache
 , gen_rv64_Xcheri_cache
-, gen_pte_perms
-, gen_pte39_trans_core
-, gen_pte48_trans_core
-, gen_pte_trans
+-- , gen_pte_perms -- CHERIoT lacks supervisor mode
+-- , gen_pte39_trans_core -- CHERIoT lacks supervisor mode
+-- , gen_pte48_trans_core -- CHERIoT lacks supervisor mode
+-- , gen_pte_trans -- CHERIoT lacks supervisor mode
 ) where
 
 import InstrCodec
@@ -177,131 +177,135 @@ gen_cache conf has_caplen = random $
      return $ prologue
               <> repeatTillEnd (dist $ concat insts)
 
-gen_pte_perms = random $
-  do lperms <- bits 10
-     uperms <- bits 5
-     clg0 <- bits 2
-     clg1 <- bits 2
-     return $ shrinkScope $ instSeq [ori 1 0 uperms, -- two cheri pte bits
-                                     slli 1 1 16,
-                                     ori 1 1 0x000, -- 11 msbs of PA
-                                     slli 1 1 11,
-                                     ori 1 1 0x000, -- next 11 bits of PA
-                                     slli 1 1 11,
-                                     ori 1 1 0x100, -- next 11 bits of PA
-                                     slli 1 1 11,
-                                     ori 1 1 0x000, -- next 11 bits of PA
-                                     slli 1 1 10,
-                                     ori 1 1 lperms, -- Permissions bits
-                                     addi 5 0 1,
-                                     slli 5 5 31,
-                                     slli 5 5 31,
-                                     slli 5 5 1,
-                                     lui 6 0x80,
-                                     add 5 5 6,
-                                     lui 7 0x40000,
-                                     slli 7 7 1,
-                                     sd 7 1 0]
-                                     <>
-                                     csrw (unsafe_csrs_indexFromName "satp") 5
-                                     <>
-                                     csrwi (unsafe_csrs_indexFromName "sccsr") (clg0 * 4)
-                                     <>
-                                     (noShrink $ inst $ sfence 0 0)
-                                     <> mconcat [
-                                     inst sret,
-                                     instUniform [ccleartag 3 3, cmove 3 3],
-                                     instUniform [sw 0 3 16, csc 3 0 16], -- csc formerly known as sq (note: swapped reg order)
-                                     instUniform [lw 4 0 16, clc 4 0 16], -- clc formerly known as lq
-                                     csrwi (unsafe_csrs_indexFromName "sccsr") (clg1 * 4),
-                                     instUniform [lw 4 0 16, clc 4 0 16], -- clc formerly known as lq
-                                     inst $ cgettag 5 4,
-                                     inst ecall]
+-- CHERIoT lacks supervisor mode
+-- gen_pte_perms = random $
+--   do lperms <- bits 10
+--      uperms <- bits 5
+--      clg0 <- bits 2
+--      clg1 <- bits 2
+--      return $ shrinkScope $ instSeq [ori 1 0 uperms, -- two cheri pte bits
+--                                      slli 1 1 16,
+--                                      ori 1 1 0x000, -- 11 msbs of PA
+--                                      slli 1 1 11,
+--                                      ori 1 1 0x000, -- next 11 bits of PA
+--                                      slli 1 1 11,
+--                                      ori 1 1 0x100, -- next 11 bits of PA
+--                                      slli 1 1 11,
+--                                      ori 1 1 0x000, -- next 11 bits of PA
+--                                      slli 1 1 10,
+--                                      ori 1 1 lperms, -- Permissions bits
+--                                      addi 5 0 1,
+--                                      slli 5 5 31,
+--                                      slli 5 5 31,
+--                                      slli 5 5 1,
+--                                      lui 6 0x80,
+--                                      add 5 5 6,
+--                                      lui 7 0x40000,
+--                                      slli 7 7 1,
+--                                      sd 7 1 0]
+--                                      <>
+--                                      csrw (unsafe_csrs_indexFromName "satp") 5
+--                                      <>
+--                                      csrwi (unsafe_csrs_indexFromName "sccsr") (clg0 * 4)
+--                                      <>
+--                                      (noShrink $ inst $ sfence 0 0)
+--                                      <> mconcat [
+--                                      inst sret, -- CHERIoT lacks supervisor mode
+--                                      instUniform [ccleartag 3 3, cmove 3 3],
+--                                      instUniform [sw 0 3 16, csc 3 0 16], -- csc formerly known as sq (note: swapped reg order)
+--                                      instUniform [lw 4 0 16, clc 4 0 16], -- clc formerly known as lq
+--                                      csrwi (unsafe_csrs_indexFromName "sccsr") (clg1 * 4),
+--                                      instUniform [lw 4 0 16, clc 4 0 16], -- clc formerly known as lq
+--                                      inst $ cgettag 5 4,
+--                                      inst ecall]
 
-gen_pte39_trans_core lxReg addrReg pteReg = random $
-  do let leafperms = 0xFF
-     let parentperms = 0xF1
-     l2perms <- elements [leafperms, parentperms]
-     l1perms <- elements [leafperms, parentperms]
-     l0perms <- elements [leafperms, parentperms]
-     let satpa = 0x803ff000
-     let l2pa  = 0x80000000
-     let l1pa  = 0x80200000
-     let l0pa  = 0x80001000
-     let satp = (shiftL 0x8 60) + (shiftR satpa 12)
-     let l2pte = (shiftR l2pa 2) + l2perms
-     let l1pte = (shiftR l1pa 2) + l1perms
-     let l0pte = (shiftR l0pa 2) + l0perms
-     addrInitial <- elements [0x00000000, 0x00000800, 0x00100000]
-     return $ shrinkScope $ mconcat [li64 pteReg l2pte,
-                                     li64 lxReg  satpa,
-                                     inst $ sd lxReg pteReg 0,
-                                     li64 pteReg l1pte,
-                                     li64 lxReg  l2pa,
-                                     inst $ sd lxReg pteReg 0,
-                                     li64 pteReg l0pte,
-                                     li64 lxReg  l1pa,
-                                     inst $ sd lxReg pteReg 0,
-                                     li64 pteReg satp,
-                                     csrw (unsafe_csrs_indexFromName "satp") pteReg,
-                                     li64 addrReg addrInitial]
-                                     <>
-                                     (noShrink $ inst $ sfence 0 0)
-                                     <>
-                                     (inst sret)
+-- CHERIoT lacks supervisor mode
+-- gen_pte39_trans_core lxReg addrReg pteReg = random $
+--   do let leafperms = 0xFF
+--      let parentperms = 0xF1
+--      l2perms <- elements [leafperms, parentperms]
+--      l1perms <- elements [leafperms, parentperms]
+--      l0perms <- elements [leafperms, parentperms]
+--      let satpa = 0x803ff000
+--      let l2pa  = 0x80000000
+--      let l1pa  = 0x80200000
+--      let l0pa  = 0x80001000
+--      let satp = (shiftL 0x8 60) + (shiftR satpa 12)
+--      let l2pte = (shiftR l2pa 2) + l2perms
+--      let l1pte = (shiftR l1pa 2) + l1perms
+--      let l0pte = (shiftR l0pa 2) + l0perms
+--      addrInitial <- elements [0x00000000, 0x00000800, 0x00100000]
+--      return $ shrinkScope $ mconcat [li64 pteReg l2pte,
+--                                      li64 lxReg  satpa,
+--                                      inst $ sd lxReg pteReg 0,
+--                                      li64 pteReg l1pte,
+--                                      li64 lxReg  l2pa,
+--                                      inst $ sd lxReg pteReg 0,
+--                                      li64 pteReg l0pte,
+--                                      li64 lxReg  l1pa,
+--                                      inst $ sd lxReg pteReg 0,
+--                                      li64 pteReg satp,
+--                                      csrw (unsafe_csrs_indexFromName "satp") pteReg,
+--                                      li64 addrReg addrInitial]
+--                                      <>
+--                                      (noShrink $ inst $ sfence 0 0)
+--                                      <>
+--                                      (inst sret) -- CHERIoT lacks supervisor mode
 
-gen_pte48_trans_core lxReg addrReg pteReg = random $
-  do let leafperms = 0xFF
-     let parentperms = 0xF1
-     l3perms <- elements [leafperms, parentperms]
-     l2perms <- elements [leafperms, parentperms]
-     l1perms <- elements [leafperms, parentperms]
-     l0perms <- elements [leafperms, parentperms]
-     let satpa = 0x803ff000
-     let l3pa  = 0x80000000
-     let l2pa  = 0x80180000
-     let l1pa  = 0x80200000
-     let l0pa  = 0x80001000
-     let satp = (shiftL 0x9 60) + (shiftR satpa 12)
-     let l3pte = (shiftR l3pa 2) + l3perms
-     let l2pte = (shiftR l2pa 2) + l2perms
-     let l1pte = (shiftR l1pa 2) + l1perms
-     let l0pte = (shiftR l0pa 2) + l0perms
-     addrInitial <- elements [0x00000000, 0x00000800, 0x00100000]
-     return $ shrinkScope $ mconcat [li64 pteReg l3pte,
-                                     li64 lxReg  satpa,
-                                     inst $ sd lxReg pteReg 0,
-                                     li64 pteReg l2pte,
-                                     li64 lxReg  l3pa,
-                                     inst $ sd lxReg pteReg 0,
-                                     li64 pteReg l1pte,
-                                     li64 lxReg  l2pa,
-                                     inst $ sd lxReg pteReg 0,
-                                     li64 pteReg l0pte,
-                                     li64 lxReg  l1pa,
-                                     inst $ sd lxReg pteReg 0,
-                                     li64 pteReg satp,
-                                     csrw (unsafe_csrs_indexFromName "satp") pteReg,
-                                     li64 addrReg addrInitial]
-                                     <>
-                                     (noShrink $ inst $ sfence 0 0)
-                                     <>
-                                     (inst sret)
+-- CHERIoT lacks supervisor mode
+-- gen_pte48_trans_core lxReg addrReg pteReg = random $
+--   do let leafperms = 0xFF
+--      let parentperms = 0xF1
+--      l3perms <- elements [leafperms, parentperms]
+--      l2perms <- elements [leafperms, parentperms]
+--      l1perms <- elements [leafperms, parentperms]
+--      l0perms <- elements [leafperms, parentperms]
+--      let satpa = 0x803ff000
+--      let l3pa  = 0x80000000
+--      let l2pa  = 0x80180000
+--      let l1pa  = 0x80200000
+--      let l0pa  = 0x80001000
+--      let satp = (shiftL 0x9 60) + (shiftR satpa 12)
+--      let l3pte = (shiftR l3pa 2) + l3perms
+--      let l2pte = (shiftR l2pa 2) + l2perms
+--      let l1pte = (shiftR l1pa 2) + l1perms
+--      let l0pte = (shiftR l0pa 2) + l0perms
+--      addrInitial <- elements [0x00000000, 0x00000800, 0x00100000]
+--      return $ shrinkScope $ mconcat [li64 pteReg l3pte,
+--                                      li64 lxReg  satpa,
+--                                      inst $ sd lxReg pteReg 0,
+--                                      li64 pteReg l2pte,
+--                                      li64 lxReg  l3pa,
+--                                      inst $ sd lxReg pteReg 0,
+--                                      li64 pteReg l1pte,
+--                                      li64 lxReg  l2pa,
+--                                      inst $ sd lxReg pteReg 0,
+--                                      li64 pteReg l0pte,
+--                                      li64 lxReg  l1pa,
+--                                      inst $ sd lxReg pteReg 0,
+--                                      li64 pteReg satp,
+--                                      csrw (unsafe_csrs_indexFromName "satp") pteReg,
+--                                      li64 addrReg addrInitial]
+--                                      <>
+--                                      (noShrink $ inst $ sfence 0 0)
+--                                      <>
+--                                      (inst sret) -- CHERIoT lacks supervisor mode
 
-gen_pte_trans = random $
-  do let lxreg = 1
-     let addrReg = 2
-     let ptereg = 30
-     return $ shrinkScope $ (gen_pte39_trans_core lxreg addrReg ptereg)
-                            <>
-                            (repeatTillEnd
-                                              (random $
-                                               do imm <- elements [0x10, 0x100, 0x0]
-                                                  datReg <- elements [ptereg, lxreg]
-                                                  return $ dist [(8, instUniform $ rv64_i_load  addrReg datReg imm),
-                                                                 (8, instUniform $ rv64_i_store addrReg datReg imm),
-                                                                 (4, inst $ addi addrReg addrReg imm),
-                                                                 (1, inst $ fence_i),
-                                                                 (1, inst $ fence 0 0)]))
-                            <>
-                            (noShrink $ inst ecall)
+-- CHERIoT lacks supervisor mode
+-- gen_pte_trans = random $
+--   do let lxreg = 1
+--      let addrReg = 2
+--      let ptereg = 30
+--      return $ shrinkScope $ (gen_pte39_trans_core lxreg addrReg ptereg)
+--                             <>
+--                             (repeatTillEnd
+--                                               (random $
+--                                                do imm <- elements [0x10, 0x100, 0x0]
+--                                                   datReg <- elements [ptereg, lxreg]
+--                                                   return $ dist [(8, instUniform $ rv64_i_load  addrReg datReg imm),
+--                                                                  (8, instUniform $ rv64_i_store addrReg datReg imm),
+--                                                                  (4, inst $ addi addrReg addrReg imm),
+--                                                                  (1, inst $ fence_i),
+--                                                                  (1, inst $ fence 0 0)]))
+--                             <>
+--                             (noShrink $ inst ecall)
