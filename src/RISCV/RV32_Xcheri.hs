@@ -65,6 +65,7 @@ module RISCV.RV32_Xcheri (
 -- , cgetflags -- CHERIoT lacks cgetflags instr
 , cgetaddr
 , cgethigh
+, cgettop
 , cseal
 , cunseal
 , candperm
@@ -92,6 +93,7 @@ module RISCV.RV32_Xcheri (
 -- , jalr_cap -- CHERIoT lacks jalr_cap (jalr.cap) instr
 -- , cinvoke -- CHERIoT lacks cinvoke instr
 , ctestsubset
+, csetequalexact
 , cspecialrw
 , auicgp
 -- , auipcc -- auipcc uses same encoding as auipc, so just use auipc
@@ -149,6 +151,8 @@ cgetaddr_raw                       =                                        "111
 cgetaddr rd cs1                    = encode cgetaddr_raw                                   cs1          rd
 cgethigh_raw                       =                                        "1111111 10111 cs1[4:0] 000 rd[4:0] 1011011"
 cgethigh rd cs1                    = encode cgethigh_raw                                   cs1          rd
+cgettop_raw                        =                                        "1111111 11000 cs1[4:0] 000 rd[4:0] 1011011"
+cgettop rd cs1                     = encode cgettop_raw                                    cs1          rd
 
 -- Capability Modification
 cseal_raw                          =                                        "0001011 cs2[4:0] cs1[4:0] 000 cd[4:0] 1011011"
@@ -232,6 +236,8 @@ auicgp cd imm                      = encode auicgp_raw                       imm
 -- Assertion
 ctestsubset_raw                    =                                        "0100000 cs2[4:0] cs1[4:0] 000 rd[4:0] 1011011"
 ctestsubset rd cs1 cs2             = encode ctestsubset_raw                          cs2      cs1          rd
+csetequalexact_raw                 =                                        "0100001 cs2[4:0] cs1[4:0] 000 rd[4:0] 1011011"
+csetequalexact rd cs1 cs2          = encode csetequalexact_raw                       cs2      cs1          rd
 
 -- Register Clearing
 -- CHERIoT lacks clear instr
@@ -376,6 +382,7 @@ rv32_xcheri_disass = [ cgetperm_raw                    --> prettyR_2op "cgetperm
                     --  , cgetoffset_raw                  --> prettyR_2op "cgetoffset" -- CHERIoT lacks cgetoffset instr
                      , cgetaddr_raw                    --> prettyR_2op "cgetaddr"
                      , cgethigh_raw                    --> prettyR_2op "cgethigh"
+                     , cgettop_raw                     --> prettyR_2op "cgettop"
                      , cseal_raw                       --> prettyR "cseal"
                      , cunseal_raw                     --> prettyR "cunseal"
                      , candperm_raw                    --> prettyR "candperm"
@@ -405,6 +412,7 @@ rv32_xcheri_disass = [ cgetperm_raw                    --> prettyR_2op "cgetperm
                     --  , jalr_cap_raw                       --> prettyR_2op "jalr_cap" -- CHERIoT lacks jalr_cap (jalr.cap) instr
                     --  , cinvoke_raw                     --> pretty_2src "cinvoke" -- CHERIoT lacks cinvoke instr
                      , ctestsubset_raw                 --> prettyR "ctestsubset"
+                     , csetequalexact_raw              --> prettyR "csetequalexact"
                     --  , clear_raw                       --> pretty_reg_clear "clear" -- CHERIoT lacks clear instr
                     --  , cclear_raw                      --> pretty_reg_clear "cclear" -- CHERIoT lacks cclear instr
                     --  , fpclear_raw                     --> pretty_reg_clear "fpclear" -- CHERIoT lacks fpclear instr
@@ -444,6 +452,7 @@ rv32_xcheri_extract = [ cgetperm_raw                    --> extract_1op cgetperm
                       -- , cgetflags_raw                   --> extract_1op cgetflags_raw -- CHERIoT lacks cgetflags instr
                       , cgetaddr_raw                    --> extract_1op cgetaddr_raw
                       , cgethigh_raw                    --> extract_1op cgethigh_raw
+                      , cgettop_raw                     --> extract_1op cgettop_raw
                       , cseal_raw                       --> extract_2op cseal_raw
                       , cunseal_raw                     --> extract_2op cunseal_raw
                       , candperm_raw                    --> extract_2op candperm_raw
@@ -473,6 +482,7 @@ rv32_xcheri_extract = [ cgetperm_raw                    --> extract_1op cgetperm
                       -- , jalr_cap_raw                    --> extract_1op jalr_cap_raw -- CHERIoT lacks jalr_cap (jalr.cap) instr
                       -- , cinvoke_raw                     --> extract_cinvoke -- CHERIoT lacks cinvoke instr
                       , ctestsubset_raw                 --> extract_2op ctestsubset_raw
+                      , csetequalexact_raw              --> extract_2op csetequalexact_raw
 --                    , clear_raw                       --> noextract -- TODO -- CHERIoT lacks clear instr
 --                    , cclear_raw                       --> noextract -- TODO -- CHERIoT lacks cclear instr
 --                    , fpclear_raw                     --> noextract -- TODO -- CHERIoT lacks fpclear instr
@@ -517,6 +527,8 @@ shrink_cgetaddr cs rd = [addi rd cs 0]
 shrink_cgethigh :: Integer -> Integer -> [Instruction]
 shrink_cgethigh cs rd = [addi rd cs 0, addi rd cs 0xfff]
 
+-- TODO create shrink_cgettop and add cgettop to shrink_cap (is applicable)
+
 shrink_cap :: Integer -> Integer -> [Instruction]
 shrink_cap cs cd = [ecall,
                     cmove cd cs,
@@ -549,6 +561,8 @@ shrink_cmove cs cd = [cgetaddr cd cs]
 
 shrink_ctestsubset cs2 cs1 rd = [addi rd 0 0, addi rd 0 1] ++ shrink_capcap cs2 cs1 rd
 
+-- TODO create shrink_csetequalexact
+
 -- CHERIoT lacks cfromptr instr
 -- shrink_cfromptr rs cs cd = [csetoffset cd cs rs] ++ shrink_capint rs cs cd
 
@@ -571,6 +585,7 @@ rv32_xcheri_shrink = [ cgetperm_raw                    --> shrink_cgetperm
                     --  , cgetflags_raw                   --> shrink_cgetflags -- CHERIoT lacks cgetflags instr
                      , cgetaddr_raw                    --> shrink_cgetaddr
                      , cgethigh_raw                    --> shrink_cgethigh
+                    --  , cgettop_raw                     --> shrink_cgettop -- TODO
                      , cseal_raw                       --> shrink_capcap
                      , cunseal_raw                     --> shrink_capcap
                      , candperm_raw                    --> shrink_capint
@@ -599,6 +614,7 @@ rv32_xcheri_shrink = [ cgetperm_raw                    --> shrink_cgetperm
 --                   , jalr_cap_raw                       --> noshrink -- CHERIoT lacks jalr_cap instr
                     --  , cinvoke_raw                     --> shrink_cinvoke -- CHERIoT lacks cinvoke instr
                      , ctestsubset_raw                 --> shrink_ctestsubset
+                    --  , csetequalexact_raw              --> shrink_csetequalexact -- TODO
 --                   , clear_raw                       --> noshrink -- CHERIoT lacks clear instr
 --                   , cclear_raw                      --> noshrink -- CHERIoT lacks cclear instr
 --                   , fpclear_raw                     --> noshrink -- CHERIoT lacks fpclear instr
@@ -622,6 +638,7 @@ rv32_xcheri_inspection src dest = [ cgetperm                    dest src
                                   -- , cgetoffset                  dest src -- CHERIoT lacks cgetoffset instr
                                   , cgetaddr                    dest src
                                   , cgethigh                    dest src
+                                  , cgettop                     dest src
                                   -- , cgetflags                   dest src -- CHERIoT lacks cgetflags instr
                                   , croundrepresentablelength   dest src
                                   , crepresentablealignmentmask dest src]
@@ -642,7 +659,8 @@ rv32_xcheri_arithmetic src1 src2 imm dest =
   -- , ctoptr              dest src1 src2 -- CHERIoT lacks ctoptr instr
   -- , cfromptr            dest src1 src2 -- CHERIoT lacks cfromptr instr
   , csub                dest src1 src2
-  , ctestsubset         dest src1 src2 ]
+  , ctestsubset         dest src1 src2
+  , csetequalexact      dest src1 src2 ]
 
 -- | List of cheri miscellaneous instructions
 rv32_xcheri_misc :: Integer -> Integer -> Integer -> Integer -> Integer -> [Instruction]
