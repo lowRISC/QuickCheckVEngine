@@ -461,20 +461,21 @@ rv_c imm uimm nzimm nzuimm
      rs2 rs2' rs2_nz
      rd rd' rd_nz rd_nz_n2 = [ c_illegal
                              , c_addi4spn     rd'               nzuimm
-                             , c_fld          rd'   rs1'        uimm
-                             , c_lq           rd'   rs1'        uimm
+                            -- , c_fld          rd'   rs1'        uimm -- CHERIoT lacks floating-point extensions
+                            -- , c_lq           rd'   rs1'        uimm -- CHERIoT lacks RV128 instructions
                              , c_lw           rd'   rs1'        uimm
-                             , c_flw          rd'   rs1'        uimm
-                             , c_ld           rd'   rs1'        uimm
-                             , c_fsd                rs1'  rs2'  uimm
+                            -- , c_flw          rd'   rs1'        uimm -- CHERIoT lacks floating-point extensions
+                            -- , c_ld           rd'   rs1'        uimm -- CHERIoT lacks RV64 instructions
+                            -- , c_fsd                rs1'  rs2'  uimm -- CHERIoT lacks floating-point extensions
+                            -- , c_sq                 rs1'  rs2'  uimm -- CHERIoT lacks RV128 extensions
                              , c_sw                 rs1'  rs2'  uimm
-                             , c_fsw                rs1'  rs2'  uimm
-                             , c_sd                 rs1'  rs2'  uimm
+                            -- , c_fsw                rs1'  rs2'  uimm -- CHERIoT lacks floating-point extensions
+                            -- , c_sd                 rs1'  rs2'  uimm -- CHERIoT lacks RV64 instructions
 
                              , c_nop
                              , c_addi         rs1_rd_nz         nzimm
                              , c_jal                            imm
-                             , c_addiw        rs1_rd_nz         imm
+                            -- , c_addiw        rs1_rd_nz         imm -- CHERIoT lacks RV64 instructions
                              , c_li           rd_nz             imm
                              , c_addi16sp                       nzimm
                              , c_lui          rd_nz_n2          nzimm
@@ -487,29 +488,29 @@ rv_c imm uimm nzimm nzuimm
                              , c_xor          rs1'_rd'    rs2'
                              , c_or           rs1'_rd'    rs2'
                              , c_and          rs1'_rd'    rs2'
-                             , c_subw         rs1'_rd'    rs2'
-                             , c_addw         rs1'_rd'    rs2'
+                            -- , c_subw         rs1'_rd'    rs2' -- CHERIoT lacks RV64 instructions
+                            -- , c_addw         rs1'_rd'    rs2' -- CHERIoT lacks RV64 instructions
                              , c_j                              imm
                              , c_beqz               rs1'        imm
                              , c_bnez               rs1'        imm
 
                              , c_slli64       rs1_rd_nz
                              , c_slli         rs1_rd_nz         nzuimm
-                             , c_fldsp        rd                uimm
-                             , c_lqsp         rd_nz             uimm
+                            -- , c_fldsp        rd                uimm -- CHERIoT lacks floating-point extensions
+                            -- , c_lqsp         rd_nz             uimm -- CHERIoT lacks RV128 instructions
                              , c_lwsp         rd_nz             uimm
-                             , c_flwsp        rd                uimm
-                             , c_ldsp         rd_nz             uimm
+                            -- , c_flwsp        rd                uimm -- CHERIoT lacks floating-point extensions
+                            -- , c_ldsp         rd_nz             uimm -- CHERIoT lacks RV64 instructions
                              , c_jr                 rs1_nz
                              , c_mv           rd_nz       rs2_nz
                              , c_ebreak
                              , c_jalr               rs1_nz
                              , c_add          rs1_rd_nz   rs2_nz
-                             , c_fsdsp                    rs2   uimm
-                             , c_sqsp                     rs2   uimm
-                             , c_swsp                     rs2   uimm
-                             , c_fswsp                    rs2   uimm
-                             , c_sdsp                     rs2   uimm ]
+                            -- , c_fsdsp                    rs2   uimm -- CHERIoT lacks floating-point extensions
+                            -- , c_sqsp                     rs2   uimm -- CHERIoT lacks RV128 instructions
+                             , c_swsp                     rs2   uimm ]
+                            -- , c_fswsp                    rs2   uimm  -- CHERIoT lacks floating-point extensions
+                            -- , c_sdsp                     rs2   uimm  -- CHERIoT lacks RV64 instructions
 
 -- | Exaustive list of RISC-V compressed instructions.
 -- | Includes the normal list along with HINT, REServed, and NSE encodings.
