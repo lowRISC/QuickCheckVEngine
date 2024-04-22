@@ -49,13 +49,15 @@ module RISCV.RV_C (
 , c_lq
 , c_lw
 , c_flw
-, c_ld
+-- , c_ld -- CHERIoT uses c_ld encoding for c_clc
+, c_clc   -- CHERIoT uses c_ld encoding for c_clc
 , c_res_a
 , c_fsd
 , c_sq
 , c_sw
 , c_fsw
-, c_sd
+-- , c_sd -- CHERIoT uses c_sd encoding for c_csc
+, c_csc   -- CHERIoT uses c_sd encoding for c_csc
 , c_nop
 , c_nop_hint
 , c_addi
@@ -103,7 +105,7 @@ module RISCV.RV_C (
 , c_lwsp
 , c_lwsp_res
 , c_flwsp
-, c_ldsp
+, c_ldsp -- WARNING: CHERIoT reuses c_ldsp as capability load relative to stack capability
 , c_ldsp_res
 , c_jr
 , c_jr_res
@@ -117,7 +119,7 @@ module RISCV.RV_C (
 , c_sqsp
 , c_swsp
 , c_fswsp
-, c_sdsp
+, c_sdsp -- WARNING: CHERIoT reuses c_sdsp as capability store relative to stack capability
 -- * RISC-V compressed instructions, others
 , rv_c_disass
 , rv_c
@@ -152,8 +154,11 @@ c_lw_raw                =                            "010   uimm[5:3]           
 c_lw rd' rs1' uimm      = encode c_lw_raw                   uimm                  rs1'                      rd'
 c_flw_raw               =                            "011   uimm[5:3]             rs1'[2:0] uimm[2] uimm[6] rd'[2:0] 00" -- V MULTI V
 c_flw rd' rs1' uimm     = encode c_flw_raw                  uimm                  rs1'                      rd'          --  RV32FC
+-- CHERIoT uses c_ld encoding for c_clc
 c_ld_raw                =                            "011   uimm[5:3]             rs1'[2:0] uimm[2] uimm[6] rd'[2:0] 00" -- v
 c_ld rd' rs1' uimm      = encode c_ld_raw                   uimm                  rs1'                      rd'          --  RV64C/RV128C
+c_clc_raw               =                            "011   uimm[5:3]             rs1'[2:0] uimm[2] uimm[6] rd'[2:0] 00" -- NOTE: CHERIoT-only
+c_clc rd' rs1' uimm     = encode c_clc_raw                  uimm                  rs1'                      rd' -- NOTE: CHERIoT-only
 c_res_a_raw             =                            "100                            ignr[10:0]                      00" -- Reserved instr
 c_res_a ignr            = encode c_res_a_raw                                         ignr                                -- Reserved instr
 c_fsd_raw               =                            "101   uimm[5:3]            rs1'[2:0]       uimm[7:6] rs2'[2:0] 00" -- V MULTI V
@@ -164,8 +169,11 @@ c_sw_raw                =                            "110   uimm[5:3]           
 c_sw rs1' rs2' uimm     = encode c_sw_raw                   uimm                 rs1'                      rs2'
 c_fsw_raw               =                            "111   uimm[5:3]            rs1'[2:0] uimm[2] uimm[6] rs2'[2:0] 00" -- V MULTI V
 c_fsw rs1' rs2' uimm    = encode c_fsw_raw                  uimm                 rs1'                      rs2'          --  RV32FC
+-- CHERIoT uses c_sd encoding for c_csc
 c_sd_raw                =                            "111   uimm[5:3]            rs1'[2:0]       uimm[7:6] rs2'[2:0] 00" -- v
 c_sd rs1' rs2' uimm     = encode c_sd_raw                   uimm                 rs1'                      rs2'          --  RV64C/RV128C
+c_csc_raw               =                            "111   uimm[5:3]            rs1'[2:0]       uimm[7:6] rs2'[2:0] 00" -- NOTE: CHERIoT-only
+c_csc rs1' rs2' uimm    = encode c_csc_raw                  uimm                 rs1'                      rs2' -- NOTE: CHERIoT-only
 
 -- | RVC Quadrant 1
 c_nop_raw               =                            "000        0          00000      00000 01"
@@ -261,6 +269,7 @@ c_lwsp_raw              =                            "010   uimm[5]     rd_nz[4:
 c_lwsp rd_nz uimm       = encode c_lwsp_raw                 uimm        rd_nz
 c_flwsp_raw             =                            "011   uimm[5]        rd[4:0] uimm[4:2] uimm[7:6] 10" -- v MULTI V
 c_flwsp rd uimm         = encode c_flwsp_raw                uimm           rd                              --  RV32FC
+-- WARNING: CHERIoT reuses c_ldsp as capability load relative to stack capability
 c_ldsp_res_raw          =                            "011   uimm[5]          00000 uimm[4:2] uimm[7:6] 10" -- v
 c_ldsp_res uimm         = encode c_ldsp_res_raw             uimm                                           --  RV64C/RV128C; REServed, rd==0
 c_ldsp_raw              =                            "011   uimm[5]     rd_nz[4:0] uimm[4:2] uimm[7:6] 10" -- v
@@ -289,6 +298,7 @@ c_swsp_raw              =                            "110      uimm[5:2] uimm[7:
 c_swsp rs2 uimm         = encode c_swsp_raw                    uimm                           rs2
 c_fswsp_raw             =                            "111      uimm[5:2] uimm[7:6]            rs2[4:0] 10" -- RV32FC
 c_fswsp rs2 uimm        = encode c_fswsp_raw                   uimm                           rs2          -- RV32FC
+-- WARNING: CHERIoT reuses c_sdsp as capability store relative to stack capability
 c_sdsp_raw              =                            "111      uimm[5:3] uimm[8:6]            rs2[4:0] 10" -- RV64C/RV128C
 c_sdsp rs2 uimm         = encode c_sdsp_raw                    uimm                           rs2          -- RV64C/RV128C
 
@@ -311,8 +321,10 @@ rv_c_disass Nothing = rv_c_multi_disass
 -- | Precise RV32C disassembly
 rv_c_32_disass :: [DecodeBranch String]
 rv_c_32_disass = [ pad c_fld_raw          --> prettyCL_F "c.fld"
+                 , pad c_clc_raw          --> prettyCL   "c.clc" -- NOTE: CHERIoT-only
                  , pad c_flw_raw          --> prettyCL_F "c.flw"
                  , pad c_fsd_raw          --> prettyCS_F "c.fsd"
+                 , pad c_csc_raw          --> prettyCS   "c.csc" -- NOTE: CHERIoT-only
                  , pad c_fsw_raw          --> prettyCS_F "c.fsw"
 
                  , pad c_jal_raw          --> prettyCJ "c.jal"
@@ -378,9 +390,13 @@ rv_c_128_disass = [ pad c_lq_raw           --> prettyCL   "c.lq"
 -- | General RV32C/RV64C/RV128C disassembly
 rv_c_multi_disass :: [DecodeBranch String]
 rv_c_multi_disass = [ pad c_lq_raw           --> prettyIgnr3 "c.fld (RV32DC/RV64DC) / c.lq (RV128C)"
-                    , pad c_ld_raw           --> prettyIgnr3 "c.flw (RV32FC) / c.ld (RV64C/RV128C)"
+                    -- CHERIoT uses c_ld encoding for c_clc
+                    -- , pad c_ld_raw           --> prettyIgnr3 "c.flw (RV32FC) / c.ld (RV64C/RV128C)"
+                    , pad c_clc_raw          --> prettyCL   "c.clc (CHERIoT) / c.flw (RV32FC) / c.ld (RV64C/RV128C)"
                     , pad c_sq_raw           --> prettyIgnr3 "c.fsd (RV32DC/RV64DC) / c.sq (RV128C)"
-                    , pad c_sd_raw           --> prettyIgnr3 "c.fsw (RV32FC) / c.sd (RV64C/RV128C)"
+                    -- CHERIoT uses c_sd encoding for c_csc
+                    -- , pad c_sd_raw           --> prettyIgnr3 "c.fsw (RV32FC) / c.sd (RV64C/RV128C)"
+                    , pad c_csc_raw          --> prettyCS   "c.csc (CHERIoT) / c.fsw (RV32FC) / c.sd (RV64C/RV128C)"
 
                     , pad c_jal_raw          --> prettyIgnr1 "c.jal (RV32C) / c.addiw (RV64C/RV128C)"
                     , pad c_srli_nse_raw     --> prettyIgnr2 "c.srli.nse (RV32C) / c.srli (RV64C/RV128C)"
@@ -466,11 +482,13 @@ rv_c imm uimm nzimm nzuimm
                              , c_lw           rd'   rs1'        uimm
                             -- , c_flw          rd'   rs1'        uimm -- CHERIoT lacks floating-point extensions
                             -- , c_ld           rd'   rs1'        uimm -- CHERIoT lacks RV64 instructions
+                             , c_clc          rd'   rs1'        uimm -- NOTE: CHERIoT-only
                             -- , c_fsd                rs1'  rs2'  uimm -- CHERIoT lacks floating-point extensions
                             -- , c_sq                 rs1'  rs2'  uimm -- CHERIoT lacks RV128 extensions
                              , c_sw                 rs1'  rs2'  uimm
                             -- , c_fsw                rs1'  rs2'  uimm -- CHERIoT lacks floating-point extensions
                             -- , c_sd                 rs1'  rs2'  uimm -- CHERIoT lacks RV64 instructions
+                            , c_csc                 rs1' rs2'   uimm -- NOTE: CHERIoT-only
 
                              , c_nop
                              , c_addi         rs1_rd_nz         nzimm
@@ -500,7 +518,7 @@ rv_c imm uimm nzimm nzuimm
                             -- , c_lqsp         rd_nz             uimm -- CHERIoT lacks RV128 instructions
                              , c_lwsp         rd_nz             uimm
                             -- , c_flwsp        rd                uimm -- CHERIoT lacks floating-point extensions
-                            -- , c_ldsp         rd_nz             uimm -- CHERIoT lacks RV64 instructions
+                            -- , c_ldsp         rd_nz             uimm -- WARNING: CHERIoT reuses c_ldsp as capability load relative to stack capability
                              , c_jr                 rs1_nz
                              , c_mv           rd_nz       rs2_nz
                              , c_ebreak
@@ -510,7 +528,7 @@ rv_c imm uimm nzimm nzuimm
                             -- , c_sqsp                     rs2   uimm -- CHERIoT lacks RV128 instructions
                              , c_swsp                     rs2   uimm ]
                             -- , c_fswsp                    rs2   uimm  -- CHERIoT lacks floating-point extensions
-                            -- , c_sdsp                     rs2   uimm  -- CHERIoT lacks RV64 instructions
+                            -- , c_sdsp                     rs2   uimm  -- WARNING: CHERIoT reuses c_sdsp as capability store relative to stack capability
 
 -- | Exaustive list of RISC-V compressed instructions.
 -- | Includes the normal list along with HINT, REServed, and NSE encodings.
