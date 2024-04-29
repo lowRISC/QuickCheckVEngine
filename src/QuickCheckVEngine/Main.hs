@@ -82,6 +82,7 @@ import QuickCheckVEngine.Templates.GenCHERI
 import QuickCheckVEngine.Templates.GenHPM
 import QuickCheckVEngine.Templates.GenTransExec
 import QuickCheckVEngine.Templates.GenUnstructured
+import QuickCheckVEngine.Instrlike
 
 -- command line arguments
 --------------------------------------------------------------------------------
@@ -322,9 +323,9 @@ main = withSocketsDo $ do
   let check_mcause_on_trap :: Test TestResult -> Test TestResult
       check_mcause_on_trap (trace :: Test TestResult) = if or (hasTrap <$> trace) then filterTest p trace <> wrapTest testSuffix else trace
         where hasTrap (_, a, b) = maybe False rvfiIsTrap a || maybe False rvfiIsTrap b
-              testSuffix = noShrink $ singleSeq [ csrrs 1 (unsafe_csrs_indexFromName "mcause") 0
-                                                , csrrs 1 (unsafe_csrs_indexFromName "mtval" ) 0 ]
-                                                -- , csrrs 1 (unsafe_csrs_indexFromName "mccsr" ) 0 ] -- CHERIoT lacks capability CSRs
+              testSuffix = noShrink $ singleSeq $ map Instr [ csrrs 1 (unsafe_csrs_indexFromName "mcause") 0
+                                                            , csrrs 1 (unsafe_csrs_indexFromName "mtval" ) 0 ]
+                                                            -- , csrrs 1 (unsafe_csrs_indexFromName "mccsr" ) 0 ] -- CHERIoT lacks capability CSRs
               p (DII_End _, _, _) = False
               p _ = True
   let askAndSave sourceFile contents m_trace testTrans = do
@@ -407,7 +408,7 @@ main = withSocketsDo $ do
                         putStrLn $ "Warning: skipping " ++ label ++ " since architecture requirements not met"
                     repeatTillTarget f t = if t <= 0 then return () else f t >>= (\x -> repeatTillTarget f (t - x))
             Just sock -> do
-              doCheck (liftM (wrapTest . singleSeq . (MkInstruction <$>)) $ listOf (genInstrServer sock)) (nTests flags)
+              doCheck (liftM (wrapTest . singleSeq . (Instr . MkInstruction <$>)) $ listOf (genInstrServer sock)) (nTests flags)
               return ()
   --
   (finalStats :: Either String Stats) <- Cereal.decode <$> (BSStrict.readFile statsTmp)
