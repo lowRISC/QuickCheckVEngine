@@ -53,9 +53,13 @@ module QuickCheckVEngine.RVFI_DII.DII (
 , diiEnd
 , diiVersNegotiate
 , diiRequestVers
+, diiInterruptReq
+, diiInterruptBar
 , pattern DII_Instruction
 , pattern DII_End
 , pattern DII_SetVersion
+, pattern DII_InterruptRequest
+, pattern DII_InterruptBarrier
 ) where
 
 import Data.Word
@@ -87,6 +91,16 @@ pattern DII_VersionNegotiate t = DII_Packet { dii_cmd = 0
 pattern DII_SetVersion t v = DII_Packet { dii_cmd = 0x76 -- 'v'
                                         , dii_time = t
                                         , dii_insn = v }
+
+-- | An interrupt request command
+pattern DII_InterruptRequest t i = DII_Packet { dii_cmd = 0x69 -- 'i'
+                                              , dii_time = t
+                                              , dii_insn = i }
+
+-- | An interrupt barrier command
+pattern DII_InterruptBarrier t = DII_Packet { dii_cmd = 0x49 -- 'I'
+                                            , dii_time = t
+                                            , dii_insn = 0 }
 
 -- | The 'DII_Packet' type captures the DII interface as defined in
 --   https://github.com/CTSRD-CHERI/TestRIG/blob/master/RVFI-DII.md
@@ -140,3 +154,11 @@ diiVersNegotiate = DII_VersionNegotiate 1
 -- | Construct a version request 'DII_Packet'
 diiRequestVers :: Word32 -> DII_Packet
 diiRequestVers = DII_SetVersion 1
+
+-- | Construct an interrupt request 'DII_Packet'
+diiInterruptReq :: Integer -> DII_Packet
+diiInterruptReq = DII_InterruptRequest 1 . fromInteger
+
+-- | Construct an interrupt barrier 'DII_Packet'
+diiInterruptBar :: DII_Packet
+diiInterruptBar = DII_InterruptBarrier 1

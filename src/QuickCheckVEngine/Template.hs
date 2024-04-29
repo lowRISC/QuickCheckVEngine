@@ -66,6 +66,8 @@ module QuickCheckVEngine.Template (
 , instDist
 , instUniform
 , instAssert
+, intReq
+, intBar
 -- ** Generate Test from Template
 , genTest
 -- ** Test parameters
@@ -86,6 +88,7 @@ import RISCV.ArchDesc
 --import Control.Monad
 import QuickCheckVEngine.TestTypes
 import QuickCheckVEngine.RVFI_DII
+import QuickCheckVEngine.Instrlike
 
 -- | Micellaneous data indicating global parameters to
 --   influence test generation, which should be passed
@@ -94,7 +97,7 @@ data TestParams = TestParams { archDesc  :: ArchDesc
                              , csrFilter :: CSRIdx -> Bool }
 
 data Template = TemplateEmpty
-              | TemplateSingle Instruction
+              | TemplateSingle Instrlike
               | TemplateSequence Template Template
               | TemplateMeta MetaInfo Template
               | TemplateRandom (Gen Template)
@@ -147,24 +150,30 @@ shrinkStrategy :: Template -> ShrinkStrategy -> Template
 shrinkStrategy x f = TemplateMeta (MetaShrinkStrategy f) x
 
 inst :: Instruction -> Template
-inst = TemplateSingle
+inst = TemplateSingle . Instr
 
 instSeq :: [Instruction] -> Template
-instSeq = mconcat . map TemplateSingle
+instSeq = mconcat . map (TemplateSingle . Instr)
 
 instDist :: [(Int, Instruction)] -> Template
-instDist = dist . map (\(a, b) -> (a, TemplateSingle b))
+instDist = dist . map (\(a, b) -> (a, TemplateSingle $ Instr b))
 
 instUniform :: [Instruction] -> Template
 instUniform = instDist . map ((,) 1)
 
 instAssert :: Instruction -> Integer -> Template
-instAssert i v = assertLastVal (TemplateSingle i) v
+instAssert i v = assertLastVal (TemplateSingle $ Instr i) v
+
+intReq :: Integer -> Template
+intReq = noShrink . TemplateSingle . IntReq
+
+intBar :: Template
+intBar = noShrink $ TemplateSingle IntBar
 
 -- Generate a Test from a Template, aiming to achieve the size
 -- specified by quickcheck, splitting the size equally among
 -- recursive Random template constructors
-genTest :: TestParams -> Template -> Gen (Test Instruction)
+genTest :: TestParams -> Template -> Gen (Test Instrlike)
 genTest param x = (\(a,_,_) -> a) <$> (go x (countTemplate x)) where
   -- Determine the number of (static instructions, recursive random templates)
   -- there are in a template
@@ -180,7 +189,7 @@ genTest param x = (\(a,_,_) -> a) <$> (go x (countTemplate x)) where
   -- Generate a test from a template, given the global number of static
   -- instructions and recursive calls. Also return the number of recursive
   -- calls resolved and the new instructions that resulted
-  go :: Template -> (Int, Int) -> Gen (Test Instruction, Int, Int)
+  go :: Template -> (Int, Int) -> Gen (Test Instrlike, Int, Int)
   go TemplateEmpty _ = return (TestEmpty, 0, 0)
   go (TemplateSingle x) _ = return (TestSingle x, 0, 0)
   go (TemplateSequence x y) (i, r) = do

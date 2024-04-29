@@ -78,6 +78,7 @@ import Text.Parsec.Language
 import Control.Monad (void)
 import QuickCheckVEngine.TestTypes
 import QuickCheckVEngine.RVFI_DII
+import QuickCheckVEngine.Instrlike
 import Data.List
 
 -- * Test shrinking
@@ -238,7 +239,16 @@ assertLastValTok = "ASSERT_LAST_VAL"
 startTok = "START_"
 endTok = "END_"
 versionTok = "QCVENGINE_TEST_V2.0"
+interruptRequestTok = "INTERRUPT_REQUEST"
+interruptBarrierTok = "INTERRUPT_BARRIER"
 magicTok = "#>"
+
+instance Show DII_Packet where
+  show (DII_End _) = "# Test end"
+  show (DII_Instruction _ x) = show $ MkInstruction (toInteger x)
+  show (DII_InterruptRequest _ v) = magicTok ++ interruptRequestTok ++ " " ++ show v
+  show (DII_InterruptBarrier _) = magicTok ++ interruptBarrierTok
+  show _ = ""
 
 showTestWithComments :: Test t -> (t -> String) -> (t -> Maybe String) -> String
 showTestWithComments x s c = printf "%s%s%s" magicTok versionTok (go x)
@@ -273,32 +283,36 @@ instance Show t => Show (Test t) where
 
 type Parser = Parsec String ()
 
+-- Function for converting legacy Test readers from Instruction to Instrlike
+convertTest :: Test Instruction -> Test Instrlike
+convertTest (TestSingle i) = TestSingle $ Instr i
+
 -- Parse a legacy Test
 ltp :: TokenParser ()
 ltp = makeTokenParser $ emptyDef { commentLine   = "#"
                                  , reservedNames = [ ".shrink", ".noshrink"
                                                    , ".4byte", ".2byte"
                                                    , ".assert"] }
-legacyParseTest :: Parser (Test Instruction)
+legacyParseTest :: Parser (Test Instrlike)
 legacyParseTest = do
   whiteSpace ltp
   test <- mconcat <$> many legacyParseTestStrand
   eof
   return test
-legacyParseTestStrand :: Parser (Test Instruction)
+legacyParseTestStrand :: Parser (Test Instrlike)
 legacyParseTestStrand = do
   mshrink <- optionMaybe $     (reserved ltp ".noshrink" >> return False)
                            <|> (reserved ltp   ".shrink" >> return  True)
   insts <- mconcat <$> many1 legacyParseInst
   return $ case mshrink of Just False -> TestMeta (MetaNoShrink, True) insts
                            _ -> insts
-legacyParseInst :: Parser (Test Instruction)
+legacyParseInst :: Parser (Test Instrlike)
 legacyParseInst = do
   reserved ltp ".4byte" <|> reserved ltp ".2byte"
   bits <- natural ltp
   let inst = TestSingle $ MkInstruction bits
   wrap <- many legacyParseSingleAssert
-  return $ foldl (\a b -> b a) inst wrap
+  return $ convertTest $ foldl (\a b -> b a) inst wrap
 legacyParseSingleAssert :: Parser (Test Instruction -> Test Instruction)
 legacyParseSingleAssert = do
   reserved ltp ".assert"
@@ -312,10 +326,12 @@ tp = makeTokenParser $
                [ ".4byte", ".2byte", magicTok ++ versionTok ] ++
                [ magicTok ++ pfx ++ sfx
                  | pfx <- [startTok, endTok]
-                 , sfx <- [shrinkScopeTok, noShrinkTok, assertLastValTok] ]
+                 , sfx <- [shrinkScopeTok, noShrinkTok, assertLastValTok] ] ++
+               [ magicTok ++ x
+                 | x <- [interruptRequestTok, interruptBarrierTok] ]
            , identLetter = alphaNum <|> char '>' <|> char '_' <|> char '.' }
 
-parseTest :: Parser (Test Instruction)
+parseTest :: Parser (Test Instrlike)
 parseTest = do
   whiteSpace tp
   parseComments
@@ -323,13 +339,13 @@ parseTest = do
   parseComments
   parseTestBody
 
-parseTestBody :: Parser (Test Instruction)
+parseTestBody :: Parser (Test Instrlike)
 parseTestBody = option TestEmpty $ do
-  first <- parseInst <|> parseShrinkScope <|> parseNoShrink <|> parseAssert
+  first <- parseInst <|> parseIntReq <|> parseIntBar <|> parseShrinkScope <|> parseNoShrink <|> parseAssert
   rest <- parseTestBody
   return $ first <> rest
 
-parseInst :: Parser (Test Instruction)
+parseInst :: Parser (Test Instrlike)
 parseInst = do
   reserved tp ".4byte" <|> reserved tp ".2byte"
   bits <- natural tp
@@ -337,7 +353,20 @@ parseInst = do
   parseComments
   wrap <- many legacyParseSingleAssert
   parseComments
-  return $ foldl (\a b -> b a) inst wrap
+  return $ convertTest $ foldl (\a b -> b a) inst wrap
+
+parseIntReq :: Parser (Test Instrlike)
+parseIntReq = do
+  reserved tp $ magicTok ++ interruptRequestTok
+  val <- natural tp
+  parseComments
+  return $ TestSingle $ IntReq val
+
+parseIntBar :: Parser (Test Instrlike)
+parseIntBar = do
+  reserved tp $ magicTok ++ interruptBarrierTok
+  parseComments
+  return $ TestSingle IntBar
 
 parseRVFIAssert :: TokenParser () -> Parser (RVFI_Packet -> Bool, String, Integer, String)
 parseRVFIAssert mtp = do
@@ -349,7 +378,7 @@ parseRVFIAssert mtp = do
   desc <- stringLiteral mtp
   return (\r -> extractor r == val, field, val, desc)
 
-parseAssert :: Parser (Test Instruction)
+parseAssert :: Parser (Test Instrlike)
 parseAssert = do
   reserved tp $ magicTok ++ startTok ++ assertLastValTok
   parseComments
@@ -360,7 +389,7 @@ parseAssert = do
   parseComments
   return $ TestMeta (MetaAssertLastVal val, True) inner
 
-parseScope :: String -> Parser (Test Instruction)
+parseScope :: String -> Parser (Test Instrlike)
 parseScope tok = do
   reserved tp $ magicTok ++ startTok ++ tok
   parseComments
@@ -369,12 +398,12 @@ parseScope tok = do
   parseComments
   return inner
 
-parseShrinkScope :: Parser (Test Instruction)
+parseShrinkScope :: Parser (Test Instrlike)
 parseShrinkScope = do
   inner <- parseScope shrinkScopeTok
   return $ TestMeta (MetaShrinkScope, True) inner
 
-parseNoShrink :: Parser (Test Instruction)
+parseNoShrink :: Parser (Test Instrlike)
 parseNoShrink = do
   inner <- parseScope noShrinkTok
   return $ TestMeta (MetaNoShrink, True) inner
@@ -386,7 +415,7 @@ parseComments = whiteSpace tp >> many p >> return ()
                      manyTill anyChar (void newline <|> eof)
                      whiteSpace tp
 
-instance Read (Test Instruction) where
+instance Read (Test Instrlike) where
   readsPrec _ str =
     case parse (partial parser) "Read" str of
       Left  e -> error $ show e ++ ", in:\n" ++ str ++ "\n"

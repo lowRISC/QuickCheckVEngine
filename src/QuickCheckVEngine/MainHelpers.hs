@@ -74,11 +74,7 @@ import QuickCheckVEngine.RVFI_DII
 import QuickCheckVEngine.Test
 import qualified QuickCheckVEngine.Template as T
 import QuickCheckVEngine.Templates.Utils
-
-instance Show DII_Packet where
-  show (DII_End _) = "# Test end"
-  show (DII_Instruction _ x) = show $ MkInstruction (toInteger x)
-  show _ = ""
+import QuickCheckVEngine.Instrlike
 
 instance {-# OVERLAPPING #-} Show (Test TestResult) where
   show = showTraceInput
@@ -117,7 +113,7 @@ instShrink = singleShrink f'
 --   Example:
 --   80000000 13050000 ef008014 13051000 ef000014
 --   80000010 13052000 ef008013 13053000 ef000013
-readDataFile :: T.TestParams -> FilePath -> IO (Test Instruction)
+readDataFile :: T.TestParams -> FilePath -> IO (Test Instrlike)
 readDataFile params inFile = do
   handle <- openFile inFile ReadMode
   contents <- hGetContents handle
@@ -139,7 +135,12 @@ genInstrServer sckt = do
   return $ unsafePerformIO $ do sendAll sckt (encode seed)
                                 (decode . BS.reverse) <$> Network.Socket.ByteString.Lazy.recv sckt 4
 
-wrapTest :: Test Instruction -> Test TestResult
+instrlikeToDii :: Instrlike -> DII_Packet
+instrlikeToDii (Instr (MkInstruction i))  = diiInstruction i
+instrlikeToDii (IntReq i) = diiInterruptReq i
+instrlikeToDii (IntBar)   = diiInterruptBar
+
+wrapTest :: Test Instrlike -> Test TestResult
 wrapTest = (<> single (diiEnd, Nothing, Nothing))
          . (flip shrinkStrategy defaultShrink)
          . (flip shrinkStrategy instShrink)
@@ -148,7 +149,7 @@ wrapTest = (<> single (diiEnd, Nothing, Nothing))
          . balance
          . removeEmpties
          . (f <$>)
-  where f (MkInstruction i) = (diiInstruction i, Nothing, Nothing)
+  where f e = (instrlikeToDii e, Nothing, Nothing)
 
 runImpls :: RvfiDiiConnection -> Maybe RvfiDiiConnection -> IORef Bool -> Int -> Int -> Test TestResult
          -> (Test TestResult -> IO a) -> (Test DII_Packet -> IO a) -> (Test DII_Packet -> IO a)
