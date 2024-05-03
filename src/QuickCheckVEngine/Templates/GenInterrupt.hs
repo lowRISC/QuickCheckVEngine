@@ -34,33 +34,68 @@
 -- Interrupt tests
 
 module QuickCheckVEngine.Templates.GenInterrupt (
-  simpleInterruptTest
+  genInterruptTest
 ) where
 
-import Data.Bits
-import QuickCheckVEngine.Instrlike
-import QuickCheckVEngine.Template
 import RISCV.RV32_I
 import RISCV.RV32_Zicsr
-import RISCV.RV_CSRs
 import RISCV.RV32_Xcheri
+import RISCV.RV_CSRs
+import QuickCheckVEngine.Instrlike
+import QuickCheckVEngine.Template
+import QuickCheckVEngine.Templates.Utils
+import QuickCheckVEngine.Templates.GenAll
+import Data.Bits
 
-simpleInterruptTest :: Template
-simpleInterruptTest = random $ do
+msiFixedTest :: Template
+msiFixedTest = random $ do
   return $ mconcat [
-                     inst $ auipc 8 4, -- load address, offset from pcc
-                     inst $ cspecialrw 0 28 8, -- write new trap address in mtcc
-                     inst $ cgettag 8 8, -- check tag of new trap
-                     inst $ addi 9 0 ((1 `shiftL` 11) - 1), -- Set bit 11 only (without unintended sign extension)
-                     inst $ addi 9 9 1,                     -- Set bit 11 only (without unintended sign extension)
-                     inst $ csrrs 0 (unsafe_csrs_indexFromName "mie") 9, -- set Machine External Interrupt Enable
+                     inst $ auipc 8 4, -- read pcc capability, offset to create some target address
+                     inst $ cspecialrw 0 28 8, -- write new trap capability in mtcc
+                     inst $ csrrsi 0 (unsafe_csrs_indexFromName "mie") (1 `shiftL` 3) , -- set Machine Software Interrupt Enable
                      inst $ csrrsi 0 (unsafe_csrs_indexFromName "mstatus") (1 `shiftL` 3) , -- set global Machine Interrupt Enable
-                     intReq 11, -- 11 = Machine External Interrupt
+                     intReq 3, -- 3 = Machine Software Interrupt
                      intBar,
                      inst $ csrrs 10 (unsafe_csrs_indexFromName "mcause") 0, -- check mcause
+                     inst $ csrrs 10 (unsafe_csrs_indexFromName "mtval") 0, -- check mtval
                      inst $ csrrs 10 (unsafe_csrs_indexFromName "mip") 0, -- check Machine Interrupts Pending
                      inst $ cspecialrw 10 31 0, -- check mepcc
-                     -- TODO: clear Machine External Interrupt Pending
+                     inst $ cspecialrw 5 29 0, -- load mtdc
+                     inst $ lui 6 (0x02000000 `shiftR` 12), -- load CLINT base address
+                     inst $ csetaddr 7 5 6, -- build capability to CLINT base
+                     inst $ lw 10 7 0, -- check Machine Software Interrupt
+                     inst $ sw 7 0 0, -- clear Machine Software Interrupt
                      inst $ mret, -- return from trap
                      inst $ addi 0 0 0 -- nop
                    ]
+
+msiRandTest :: Template
+msiRandTest = random $ do
+  tmpReg1   <- src
+  tmpReg2   <- src
+  tmpReg3   <- dest
+  imm       <- bits 12
+  return $ mconcat  [ (noShrink $ instSeq [
+                        auipc tmpReg1 0, -- load pcc capability
+                        lui tmpReg2 imm, -- load randomised trap entry address offset
+                        cincaddr tmpReg3 tmpReg1 tmpReg2, -- create capability to trap entry
+                        cspecialrw 0 28 tmpReg3, -- write new trap capability to mtcc
+                        csrrsi 0 (unsafe_csrs_indexFromName "mie") (1 `shiftL` 3), -- set Machine Software Interrupt Enable
+                        csrrsi 0 (unsafe_csrs_indexFromName "mstatus") (1 `shiftL` 3) -- set global Machine Interrupt Enable
+                      ]),
+                      genAll,
+                      intReq 3, -- set mip[3] (Machine Software Interrupt)
+                      intBar,
+                      genAll,
+                      (noShrink $ instSeq [
+                        cspecialrw tmpReg1 29 0, -- load mtdc
+                        lui tmpReg2 (0x02000000 `shiftR` 12), -- load CLINT base address
+                        csetaddr tmpReg3 tmpReg1 tmpReg2, -- create capability to CLINT base
+                        sw tmpReg3 0 0, -- clear Machine Software Interrupt
+                        mret -- return from trap
+                      ]),
+                      genAll
+                    ]
+
+genInterruptTest :: Template
+genInterruptTest = msiRandTest
