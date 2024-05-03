@@ -288,7 +288,7 @@ allTests = [
            , ("cloadtags",  "Xcheri Extension CLoadTags Template",                    andPs [has_cheri, not . has_nocloadtags], T.repeatTillEnd cLoadTagsTest)
            , ("caprandom",  "Xcheri Extension Random Template",                       has_cheri,                                randomCHERITest)
            , ("caprvcrandom", "Xcheri RVC Extension Random Template",                 andPs [has_cheri, has_c],                 randomCHERIRVCTest)
-           , ("interrupt",  "Interrupt Testing Template",                             const True,                               simpleInterruptTest)
+           , ("interrupt",  "Interrupt Testing Template",                             const True,                               genInterruptTest)
            , ("all",        "All Verification",                                       const True,                               genAll)
            , ("random",     "Random Template",                                        const True,                               randomTest)
            , ("unstructured", "Unstructured random instruction bit Template",         const True,                               T.repeatTillEnd gen_unstructured)
