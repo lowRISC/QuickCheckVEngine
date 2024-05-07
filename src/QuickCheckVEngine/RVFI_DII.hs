@@ -109,9 +109,10 @@ rvfiNegotiateVersion sckt name verbosity = do
   unless (rvfiIsHalt rvfiPkt) $
     error ("Received unexpected initial packet from " ++ name ++ ": " ++ show rvfiPkt)
   let supportedVer = rvfiHaltVersion rvfiPkt
-  result <- diiSetVersion sckt (fromIntegral supportedVer) name verbosity
-  when (result /= 2) $
-    putStrLn ("WARNING: " ++ name ++ " does not support version 2 traces.")
+  -- result <- diiSetVersion sckt (fromIntegral supportedVer) name verbosity   -- cheriot-ibex does not support RVFI V2 traces, so force V1
+  result <- diiSetVersion sckt 1 name verbosity                                -- cheriot-ibex does not support RVFI V2 traces, so force V1
+  -- when (result /= 2) $                                                      -- cheriot-ibex does not support RVFI V2 traces, so force V1
+  --   putStrLn ("WARNING: " ++ name ++ " does not support version 2 traces.") -- cheriot-ibex does not support RVFI V2 traces, so force V1
   return result
 
 -- | If supportedVersion > 1, send a 'v' command to set the trace version to v2
