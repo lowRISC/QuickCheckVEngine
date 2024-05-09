@@ -77,7 +77,9 @@ msiRandTest = random $ do
   imm       <- bits 12
   return $ mconcat  [ (noShrink $ instSeq [
                         auipc tmpReg1 0, -- load pcc capability
-                        lui tmpReg2 imm, -- load randomised trap entry address offset
+                        addi tmpReg2 0 ((imm .&. 0xFFF0) `shiftR` 4), -- | load randomised trap address offset,
+                        slli tmpReg2 tmpReg2 4,                       -- | fit within in RVFI 64KiB sram (usually)
+                        addi tmpReg2 tmpReg2 (imm .&. 0xC),           -- | and 4-byte aligned
                         cincaddr tmpReg3 tmpReg1 tmpReg2, -- create capability to trap entry
                         cspecialrw 0 28 tmpReg3, -- write new trap capability to mtcc
                         csrrsi 0 (unsafe_csrs_indexFromName "mie") (1 `shiftL` 3), -- set Machine Software Interrupt Enable
