@@ -674,6 +674,7 @@ rv32_xcheri_misc src1 src2 srcScr imm dest =
   -- , ccseal      dest src1 src2 -- CHERIoT lacks ccseal instr
   -- , csealentry  dest src1 -- CHERIoT lacks csealentry instr
   , ccleartag   dest src1
+  , cmove       dest src1
   , cspecialrw  dest srcScr src1
   , auicgp      dest imm ]
 
