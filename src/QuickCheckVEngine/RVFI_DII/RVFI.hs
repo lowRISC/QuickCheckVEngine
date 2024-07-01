@@ -411,9 +411,9 @@ instance Show RVFI_Packet where
     | rvfiIsHalt tok = "halt token"
     | otherwise =
       printf
-        "Trap: %5s, PCWD: 0x%016x, RD: %02d, RWD: 0x%016x, %sI: 0x%016x %s XL:%s (%s)"
+        "Trap: %5s, PCRD: 0x%016x, RD: %02d, RWD: 0x%016x, %sI: 0x%016x %s XL:%s (%s)"
         (show $ rvfi_trap tok /= 0) -- Trap
-        (rvfi_pc_wdata tok) -- PCWD
+        (rvfi_pc_rdata tok) -- PCRD
         (maybe 0 rvfi_rd_addr $ rvfi_int_data tok) -- RD
         (maybe 0 rvfi_rd_wdata $ rvfi_int_data tok) -- RWD
         (maybe "" show $ rvfi_mem_data tok) -- mem data
@@ -493,7 +493,7 @@ rvfiCheck strict is64 x y
             checkField strict "rs1_rdata" printHex (getRS1RData is64 x) (getRS1RData is64 y),
             checkField strict "rs2_addr" show (getRS2Addr x) (getRS2Addr y),
             checkField strict "rs2_rdata" printHex (getRS2RData is64 x) (getRS2RData is64 y),
-            checkField True "pc_wdata" printHex (maskUpper is64 (rvfi_pc_wdata x)) (maskUpper is64 (rvfi_pc_wdata y)),
+            checkField True "pc_rdata" printHex (maskUpper is64 (rvfi_pc_rdata x)) (maskUpper is64 (rvfi_pc_rdata y)),
             checkField (strict || ((maybe 0 rvfi_mem_wmask (rvfi_mem_data x)) /= 0)) "mem_addr" printHex (getMemAddr is64 x) (getMemAddr is64 y),
             _checkField (strict || rvfi_trap x == 0) "mem_wdata" (compareMemData is64 x y rvfi_mem_wmask rvfi_mem_wdata) "", -- TODO: context
             _checkField (strict || rvfi_trap x == 0) "mem_rdata" (compareMemData is64 x y rvfi_mem_rmask rvfi_mem_rdata) "" -- TODO: context
