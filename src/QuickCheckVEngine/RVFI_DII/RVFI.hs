@@ -63,6 +63,7 @@ module QuickCheckVEngine.RVFI_DII.RVFI (
 ) where
 
 import Basement.Numerical.Number (toNatural)
+import qualified Basement.Types.Word128
 import qualified Basement.Types.Word256
 import Control.Monad
 import Control.Monad.Zip (mzipWith)
@@ -115,6 +116,7 @@ data RVFI_Packet = RVFI_Packet {
 , rvfi_int_data :: Maybe RVFI_IntData
 -- Memory Access
 , rvfi_mem_data :: Maybe RVFI_MemAccessData
+, rvfi_cheri_data :: Maybe RVFI_CheriData
 -- Further TODOs in the RVFI specification:
 -- Control and Status Registers (CSRs)
 -- Modelling of Floating-Point State
@@ -137,6 +139,15 @@ rvfiGetFromString "rs1_rdata" = Just $ (maybe 0 $ toInteger . rvfi_rs1_rdata) . 
 rvfiGetFromString "rs2_rdata" = Just $ (maybe 0 $ toInteger . rvfi_rs2_rdata) . rvfi_int_data
 rvfiGetFromString "rd_addr"   = Just $ (maybe 0 $ toInteger . rvfi_rd_addr) . rvfi_int_data
 rvfiGetFromString "rd_wdata"  = Just $ (maybe 0 $ toInteger . rvfi_rd_wdata) . rvfi_int_data
+rvfiGetFromString "cs1_addr"  = Just $ (maybe 0 $ toInteger . rvfi_cs1_addr) . rvfi_cheri_data
+rvfiGetFromString "cs2_addr"  = Just $ (maybe 0 $ toInteger . rvfi_cs2_addr) . rvfi_cheri_data
+rvfiGetFromString "cs1_rdata" = Just $ (maybe 0 $ toInteger . toNatural . rvfi_cs1_rdata) . rvfi_cheri_data
+rvfiGetFromString "cs2_rdata" = Just $ (maybe 0 $ toInteger . toNatural . rvfi_cs2_rdata) . rvfi_cheri_data
+rvfiGetFromString "cs1_rtag"  = Just $ (maybe 0 $ toInteger . rvfi_cs1_rtag) . rvfi_cheri_data
+rvfiGetFromString "cs2_rtag"  = Just $ (maybe 0 $ toInteger . rvfi_cs2_rtag) . rvfi_cheri_data
+rvfiGetFromString "cd_addr"   = Just $ (maybe 0 $ toInteger . rvfi_cd_addr) . rvfi_cheri_data
+rvfiGetFromString "cd_wdata"  = Just $ (maybe 0 $ toInteger . toNatural . rvfi_cd_wdata) . rvfi_cheri_data
+rvfiGetFromString "cd_wtag"   = Just $ (maybe 0 $ toInteger . rvfi_cd_wtag) . rvfi_cheri_data
 rvfiGetFromString "pc_rdata"  = Just $ toInteger . rvfi_pc_rdata
 rvfiGetFromString "pc_wdata"  = Just $ toInteger . rvfi_pc_wdata
 rvfiGetFromString "mem_addr"  = Just $ (maybe 0 $ toInteger . rvfi_mem_addr) . rvfi_mem_data
@@ -157,7 +168,6 @@ data RVFI_IntData = RVFI_IntData {
 , rvfi_rd_addr   :: {-# UNPACK #-} !RV_RegIdx
 , rvfi_rd_wdata  :: {-# UNPACK #-} !RV_WordXLEN
   }
-  deriving (Show)
 
 data RVFI_MemAccessData = RVFI_MemAccessData {
  rvfi_mem_addr   :: {-# UNPACK #-} !RV_WordXLEN
@@ -165,6 +175,18 @@ data RVFI_MemAccessData = RVFI_MemAccessData {
 , rvfi_mem_wmask :: {-# UNPACK #-} !Word32
 , rvfi_mem_rdata :: {-# UNPACK #-} !Basement.Types.Word256.Word256
 , rvfi_mem_wdata :: {-# UNPACK #-} !Basement.Types.Word256.Word256
+}
+
+data RVFI_CheriData = RVFI_CheriData {
+  rvfi_cd_wdata  :: {-# UNPACK #-} !Basement.Types.Word128.Word128
+, rvfi_cs1_rdata :: {-# UNPACK #-} !Basement.Types.Word128.Word128
+, rvfi_cs2_rdata :: {-# UNPACK #-} !Basement.Types.Word128.Word128
+, rvfi_cd_wtag   :: {-# UNPACK #-} !Word8
+, rvfi_cs1_rtag  :: {-# UNPACK #-} !Word8
+, rvfi_cs2_rtag  :: {-# UNPACK #-} !Word8
+, rvfi_cd_addr   :: {-# UNPACK #-} !RV_RegIdx
+, rvfi_cs1_addr  :: {-# UNPACK #-} !RV_RegIdx
+, rvfi_cs2_addr  :: {-# UNPACK #-} !RV_RegIdx
 }
 
 hexStr :: BS.ByteString -> String
@@ -218,12 +240,13 @@ rvfiReadV2Response (reader, name, verbosity) = do
   connectionDebugMessage 3 connInfo ("features: " ++ (printf "0x%016x" availableFeatures))
   (intData, rf1, numBytes1) <- rvfiMaybeReadIntData (reader, name, verbosity) availableFeatures
   (memData, rf2, numBytes2) <- rvfiMaybeReadMemData (reader, name, verbosity) rf1
-  when (rf2 /= 0) $
-    errorWithContext name ("Remaining unknown feature bits set: " ++ show rf2)
-  let remainingBytes = (fromIntegral traceSize) - 64 - numBytes1 - numBytes2
+  (cheriData, rf3, numBytes3) <- rvfiMaybeReadCheriData (reader, name, verbosity) rf2
+  when (rf3 /= 0) $
+    errorWithContext name ("Remaining unknown feature bits set: " ++ show rf3)
+  let remainingBytes = (fromIntegral traceSize) - 64 - numBytes1 - numBytes2 - numBytes3
   when (remainingBytes /= 0) $
     errorWithContext name ("Did not read all bytes of V2 trace packet: " ++ show remainingBytes ++ " remaining")
-  return $ basicData {rvfi_int_data = intData, rvfi_mem_data = memData}
+  return $ basicData {rvfi_int_data = intData, rvfi_mem_data = memData, rvfi_cheri_data=cheriData}
 
 rvfiDecodeV2Header :: Get (RVFI_Packet, RVFIFeatures)
 rvfiDecodeV2Header = do
@@ -253,6 +276,7 @@ rvfiDecodeV2Header = do
     , rvfi_pc_wdata = pc_wdata
     , rvfi_int_data = Nothing
     , rvfi_mem_data = Nothing
+    , rvfi_cheri_data = Nothing
     }, availableFeatures)
 
 -- See sail-riscv/model/rvfi_dii.sail for the bitfield definitions
@@ -313,6 +337,41 @@ rvfiDecodeMemData = do
     , rvfi_mem_wdata = Basement.Types.Word256.Word256 wdata4 wdata3 wdata2 wdata1
     }
 
+rvfiMaybeReadCheriData :: (Int64 -> IO BS.ByteString, String, Int) -> RVFIFeatures -> IO (Maybe RVFI_CheriData, RVFIFeatures, Int)
+rvfiMaybeReadCheriData connection availableFeatures = do
+  let remainingFeatures = availableFeatures .&. (complement 0x10)
+  if ((availableFeatures .&. 0x10) == 0)
+    then do return (Nothing, remainingFeatures, 0)
+    else do
+      bytes <- rvfiReadDataPacketWithMagic connection 62 "chericap"
+      return $ (Just (runGet (isolate 54 rvfiDecodeCheriData) bytes), remainingFeatures, 62)
+
+rvfiDecodeCheriData :: Get RVFI_CheriData
+rvfiDecodeCheriData = do
+  cd_wdata1  <- getWord64le
+  cd_wdata2  <- getWord64le
+  cs1_rdata1 <- getWord64le
+  cs1_rdata2 <- getWord64le
+  cs2_rdata1 <- getWord64le
+  cs2_rdata2 <- getWord64le
+  cd_wtag  <- getWord8
+  cs1_rtag <- getWord8
+  cs2_rtag <- getWord8
+  cd_addr  <- getWord8
+  cs1_addr <- getWord8
+  cs2_addr <- getWord8
+  return $! RVFI_CheriData {
+      rvfi_cd_wdata  = Basement.Types.Word128.Word128 cd_wdata2 cd_wdata1
+    , rvfi_cs1_rdata = Basement.Types.Word128.Word128 cs1_rdata2 cs1_rdata1
+    , rvfi_cs2_rdata = Basement.Types.Word128.Word128 cs2_rdata2 cs2_rdata1
+    , rvfi_cd_wtag  = cd_wtag
+    , rvfi_cs1_rtag = cs1_rtag
+    , rvfi_cs2_rtag = cs2_rtag
+    , rvfi_cd_addr  = cd_addr
+    , rvfi_cs1_addr = cs1_addr
+    , rvfi_cs2_addr = cs2_addr
+    }
+
 rvfiReadV1Response :: (Int64 -> IO BS.ByteString, String, Int) -> IO RVFI_Packet
 rvfiReadV1Response (reader, name, verbosity) = do
   msg <- reader 88
@@ -367,7 +426,8 @@ rvfiDecodeV1Response = do
         , rvfi_mem_rdata = Basement.Types.Word256.Word256 0 0 0 mem_rdata
         , rvfi_mem_wdata = Basement.Types.Word256.Word256 0 0 0 mem_wdata
         }
-      }
+    , rvfi_cheri_data = Nothing
+    }
 
 -- | An otherwise empty halt token for padding
 rvfiEmptyHaltPacket :: RVFI_Packet
@@ -385,12 +445,20 @@ rvfiEmptyHaltPacket = RVFI_Packet {
     , rvfi_pc_wdata = 0
     , rvfi_int_data = Nothing
     , rvfi_mem_data = Nothing
+    , rvfi_cheri_data = Nothing
     }
+
+instance Show RVFI_IntData where
+  show tok =
+    printf
+      "RD: %02d, RWD: 0x%016x, "
+      (rvfi_rd_addr tok) -- RD
+      (rvfi_rd_wdata tok) -- RWD
 
 instance Show RVFI_MemAccessData where
   show tok =
     printf
-      "MA: 0x%016x, MWD: %s, MWM: 0b%08b, MRD: %s, MRM: 0b%08b "
+      "MA: 0x%016x, MWD: %s, MWM: 0b%08b, MRD: %s, MRM: 0b%08b, "
       (rvfi_mem_addr tok) -- MA
       (printMemData wmask wdata) -- MWD
       wmask -- MWM
@@ -406,16 +474,24 @@ instance Show RVFI_MemAccessData where
             | mask <= 65535 = printf "0x%032x" value
             | otherwise = printf "0x%064x" value
 
+instance Show RVFI_CheriData where
+  show tok =
+    printf
+      "CD: %02d, CWD: 0x%032x, CWT: %01x, "
+      (rvfi_cd_addr tok) -- CD
+      (toNatural . rvfi_cd_wdata $ tok) -- CWD
+      (rvfi_cd_wtag tok) -- CWT
+
 instance Show RVFI_Packet where
   show tok
     | rvfiIsHalt tok = "halt token"
     | otherwise =
       printf
-        "Trap: %5s, PCRD: 0x%016x, RD: %02d, RWD: 0x%016x, %sI: 0x%016x %s XL:%s (%s)"
+        "Trap: %5s, PCRD: 0x%016x, %s%s%sI: 0x%016x %s XL:%s (%s)"
         (show $ rvfi_trap tok /= 0) -- Trap
         (rvfi_pc_rdata tok) -- PCRD
-        (maybe 0 rvfi_rd_addr $ rvfi_int_data tok) -- RD
-        (maybe 0 rvfi_rd_wdata $ rvfi_int_data tok) -- RWD
+        (maybe "" show $ rvfi_int_data tok) -- int data
+        (maybe "" show $ rvfi_cheri_data tok) -- cheri data
         (maybe "" show $ rvfi_mem_data tok) -- mem data
         (rvfi_insn tok)
         (privString (rvfi_mode tok))
@@ -457,13 +533,23 @@ compareMemData is64 x y getMask getData = do
     maskWith a b = a Data.Bits..&. byteMask2bitMask b
 
 -- Internal assert + rvfi helper functions
-maskUpper _is64 _x = if _is64 then _x else _x Data.Bits..&. 0x00000000FFFFFFFF
+maskUpper    _is64 _x = if _is64 then _x else _x Data.Bits..&. 0x00000000FFFFFFFF
+maskUpperCap _is64 _x = if _is64 then _x else _x Data.Bits..&. 0xFFFFFFFFFFFFFFFF -- CHERI capabilities are twice XLEN
 getRDAddr pkt = maybe 0 rvfi_rd_addr $ rvfi_int_data pkt
-getRDWData _is64 pkt = maskUpper _is64 (maybe 0 rvfi_rd_wdata $ rvfi_int_data pkt)
+getCDAddr pkt = maybe 0 rvfi_cd_addr $ rvfi_cheri_data pkt
+getRDWData _is64 pkt = maskUpper    _is64 (maybe 0 rvfi_rd_wdata $ rvfi_int_data pkt)
+getCDWData _is64 pkt = maskUpperCap _is64 (maybe 0 (toNatural . rvfi_cd_wdata) $ rvfi_cheri_data pkt)
+getCDWTag pkt = maybe 0 rvfi_cd_wtag $ rvfi_cheri_data pkt
 getRS1Addr pkt = maybe 0 rvfi_rs1_addr $ rvfi_int_data pkt
-getRS1RData _is64 pkt = maskUpper _is64 (maybe 0 rvfi_rs1_rdata $ rvfi_int_data pkt)
+getCS1Addr pkt = maybe 0 rvfi_cs1_addr $ rvfi_cheri_data pkt
+getRS1RData _is64 pkt = maskUpper    _is64 (maybe 0 rvfi_rs1_rdata $ rvfi_int_data pkt)
+getCS1RData _is64 pkt = maskUpperCap _is64 (maybe 0 (toNatural . rvfi_cs1_rdata) $ rvfi_cheri_data pkt)
+getCS1RTag pkt = maybe 0 rvfi_cs1_rtag $ rvfi_cheri_data pkt
 getRS2Addr pkt = maybe 0 rvfi_rs2_addr $ rvfi_int_data pkt
-getRS2RData _is64 pkt = maskUpper _is64 (maybe 0 rvfi_rs2_rdata $ rvfi_int_data pkt)
+getCS2Addr pkt = maybe 0 rvfi_cs2_addr $ rvfi_cheri_data pkt
+getRS2RData _is64 pkt = maskUpper    _is64 (maybe 0 rvfi_rs2_rdata $ rvfi_int_data pkt)
+getCS2RData _is64 pkt = maskUpperCap _is64 (maybe 0 (toNatural . rvfi_cs2_rdata) $ rvfi_cheri_data pkt)
+getCS2RTag pkt = maybe 0 rvfi_cs2_rtag $ rvfi_cheri_data pkt
 getMemAddr _is64 pkt = maskUpper _is64 (maybe 0 rvfi_mem_addr $ rvfi_mem_data pkt)
 
 _checkField :: Bool -> String -> Bool -> String -> Maybe String
@@ -488,11 +574,20 @@ rvfiCheck strict is64 x y
             checkOptionalField True "mode" show (rvfi_mode x) (rvfi_mode y),
             checkOptionalField True "XLEN" show (rvfi_ixl x) (rvfi_ixl y),
             checkField (strict || rvfi_trap x == 0) "rd_addr" show (getRDAddr x) (getRDAddr y),
+            checkField (strict || rvfi_trap x == 0) "cd_addr" show (getCDAddr x) (getCDAddr y),
             checkField (strict || rvfi_trap x == 0) "rd_wdata" printHex (getRDWData is64 x) (getRDWData is64 y),
+            checkField (strict || rvfi_trap x == 0) "cd_wdata" printHex (getCDWData is64 x) (getCDWData is64 y),
+            checkField (strict || rvfi_trap x == 0) "cd_wtag" show (getCDWTag x) (getCDWTag y),
             checkField strict "rs1_addr" show (getRS1Addr x) (getRS1Addr y),
+            checkField strict "cs1_addr" show (getCS1Addr x) (getCS1Addr y),
             checkField strict "rs1_rdata" printHex (getRS1RData is64 x) (getRS1RData is64 y),
+            checkField strict "cs1_rdata" printHex (getCS1RData is64 x) (getCS1RData is64 y),
+            checkField strict "cs1_wtag" show (getCS1RTag x) (getCS1RTag y),
             checkField strict "rs2_addr" show (getRS2Addr x) (getRS2Addr y),
+            checkField strict "cs2_addr" show (getCS2Addr x) (getCS2Addr y),
             checkField strict "rs2_rdata" printHex (getRS2RData is64 x) (getRS2RData is64 y),
+            checkField strict "cs2_rdata" printHex (getCS2RData is64 x) (getCS2RData is64 y),
+            checkField strict "cs2_wtag" show (getCS2RTag x) (getCS2RTag y),
             checkField True "pc_rdata" printHex (maskUpper is64 (rvfi_pc_rdata x)) (maskUpper is64 (rvfi_pc_rdata y)),
             checkField (strict || ((maybe 0 rvfi_mem_wmask (rvfi_mem_data x)) /= 0)) "mem_addr" printHex (getMemAddr is64 x) (getMemAddr is64 y),
             _checkField (strict || rvfi_trap x == 0) "mem_wdata" (compareMemData is64 x y rvfi_mem_wmask rvfi_mem_wdata) "", -- TODO: context
