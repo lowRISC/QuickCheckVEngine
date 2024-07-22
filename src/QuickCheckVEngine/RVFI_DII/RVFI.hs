@@ -448,12 +448,18 @@ rvfiEmptyHaltPacket = RVFI_Packet {
     , rvfi_cheri_data = Nothing
     }
 
+fmtRVFIIntData :: RVFI_IntData -> [String]
+fmtRVFIIntData tok =
+  [printRegNz "RD: %02d, RWD: 0x%016x, " (rvfi_rd_addr tok) (rvfi_rd_wdata tok),
+   printRegNz "RS1: %02d, RRD1: 0x%016x, " (rvfi_rs1_addr tok) (rvfi_rs1_rdata tok),
+   printRegNz "RS2: %02d, RRD2: 0x%016x, " (rvfi_rs2_addr tok) (rvfi_rs2_rdata tok)]
+    where printRegNz :: String -> RV_RegIdx -> RV_WordXLEN -> String
+          printRegNz fmt addr value
+            | addr == 0 && value == 0 = "" -- print nothing for non-entries
+            | otherwise = printf fmt addr value
+
 instance Show RVFI_IntData where
-  show tok =
-    printf
-      "RD: %02d, RWD: 0x%016x, "
-      (rvfi_rd_addr tok) -- RD
-      (rvfi_rd_wdata tok) -- RWD
+  show tok = concat $ fmtRVFIIntData tok
 
 instance Show RVFI_MemAccessData where
   show tok =
@@ -474,24 +480,38 @@ instance Show RVFI_MemAccessData where
             | mask <= 65535 = printf "0x%032x" value
             | otherwise = printf "0x%064x" value
 
+fmtRVFICheriData :: RVFI_CheriData -> [String]
+fmtRVFICheriData tok =
+  [printCapNz "CD: %02d, CWD: 0x%032x, CWT: %01x, " (rvfi_cd_addr tok) (rvfi_cd_wdata tok) (rvfi_cd_wtag tok),
+   printCapNz "CS1: %02d, CRD1: 0x%032x, CRT1: %01x, " (rvfi_cs1_addr tok) (rvfi_cs1_rdata tok) (rvfi_cs1_rtag tok),
+   printCapNz "CS2: %02d, CRD2: 0x%032x, CRT2: %01x, " (rvfi_cs2_addr tok) (rvfi_cs2_rdata tok) (rvfi_cs2_rtag tok)]
+    where printCapNz :: String -> RV_RegIdx -> Basement.Types.Word128.Word128 -> Word8 -> String
+          printCapNz fmt addr value tag
+            | addr == 0 && (toNatural value) == 0 && tag == 0 = "" -- print nothing for non-entries
+            | otherwise = printf fmt addr (toNatural value) tag
+
 instance Show RVFI_CheriData where
-  show tok =
-    printf
-      "CD: %02d, CWD: 0x%032x, CWT: %01x, "
-      (rvfi_cd_addr tok) -- CD
-      (toNatural . rvfi_cd_wdata $ tok) -- CWD
-      (rvfi_cd_wtag tok) -- CWT
+  show tok = concat $ fmtRVFICheriData tok
+
+showIntCapReg :: Maybe RVFI_IntData -> Maybe RVFI_CheriData -> String
+showIntCapReg Nothing Nothing = ""
+showIntCapReg (Just reg) Nothing = show reg
+showIntCapReg Nothing (Just cap) =  show cap
+showIntCapReg (Just reg) (Just cap) = concat $ zipWith preferFirst (fmtRVFICheriData cap) (fmtRVFIIntData reg)
+  where preferFirst :: String -> String -> String
+        preferFirst a b
+          | length a > 0 = a
+          | otherwise    = b
 
 instance Show RVFI_Packet where
   show tok
     | rvfiIsHalt tok = "halt token"
     | otherwise =
       printf
-        "Trap: %5s, PCRD: 0x%016x, %s%s%sI: 0x%016x %s XL:%s (%s)"
+        "Trap: %5s, PCRD: 0x%016x, %s%sI: 0x%016x %s XL:%s (%s)"
         (show $ rvfi_trap tok /= 0) -- Trap
         (rvfi_pc_rdata tok) -- PCRD
-        (maybe "" show $ rvfi_int_data tok) -- int data
-        (maybe "" show $ rvfi_cheri_data tok) -- cheri data
+        (showIntCapReg (rvfi_int_data tok) (rvfi_cheri_data tok)) -- int/cap reg data
         (maybe "" show $ rvfi_mem_data tok) -- mem data
         (rvfi_insn tok)
         (privString (rvfi_mode tok))
