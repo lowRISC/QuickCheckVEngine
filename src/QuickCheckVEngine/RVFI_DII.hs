@@ -97,8 +97,8 @@ recvRVFITrace conn verbosity tStruct = do
 
 -- | Perform a trace version negotiation with an implementation and return the
 -- | accepted version.
-rvfiNegotiateVersion :: Socket -> String -> Int -> IO Int
-rvfiNegotiateVersion sckt name verbosity = do
+rvfiNegotiateVersion :: Socket -> Bool -> String -> Int -> IO Int
+rvfiNegotiateVersion sckt forceRvfiV1 name verbosity = do
   sendDIIPacket sckt diiVersNegotiate
   -- send a version negotiate packet, old implementations will return a halt
   -- packet with the halt field set to 1, newer implementations will use the
@@ -109,8 +109,11 @@ rvfiNegotiateVersion sckt name verbosity = do
   unless (rvfiIsHalt rvfiPkt) $
     error ("Received unexpected initial packet from " ++ name ++ ": " ++ show rvfiPkt)
   let supportedVer = rvfiHaltVersion rvfiPkt
-  result <- diiSetVersion sckt (fromIntegral supportedVer) name verbosity
-  when (result /= 2) $
+  let targetVer = if (forceRvfiV1) then 1 else supportedVer
+  result <- diiSetVersion sckt (fromIntegral targetVer) name verbosity
+  when (supportedVer /= targetVer && verbosity > 2) $
+    putStrLn ("Forcing " ++ name ++ " to use version 1 traces despite supporting version " ++ show supportedVer)
+  when (supportedVer /= 2 && not forceRvfiV1) $
     putStrLn ("WARNING: " ++ name ++ " does not support version 2 traces.")
   return result
 
