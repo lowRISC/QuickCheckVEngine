@@ -116,9 +116,11 @@ data RVFI_Packet = RVFI_Packet {
 , rvfi_int_data :: Maybe RVFI_IntData
 -- Memory Access
 , rvfi_mem_data :: Maybe RVFI_MemAccessData
+-- Capability register Read/Write
 , rvfi_cheri_data :: Maybe RVFI_CheriData
+-- Control and Status Registers (CSRs) Read/Write
+, rvfi_csr_data :: Maybe RVFI_CSRData
 -- Further TODOs in the RVFI specification:
--- Control and Status Registers (CSRs)
 -- Modelling of Floating-Point State
 -- Handling of Speculative Execution
 -- Modelling of Virtual Memory
@@ -155,6 +157,9 @@ rvfiGetFromString "mem_rmask" = Just $ (maybe 0 $ toInteger . rvfi_mem_rmask) . 
 rvfiGetFromString "mem_wmask" = Just $ (maybe 0 $ toInteger . rvfi_mem_wmask) . rvfi_mem_data
 rvfiGetFromString "mem_rdata" = Just $ (maybe 0 $ toInteger . toNatural . rvfi_mem_rdata) . rvfi_mem_data
 rvfiGetFromString "mem_wdata" = Just $ (maybe 0 $ toInteger . toNatural . rvfi_mem_wdata) . rvfi_mem_data
+rvfiGetFromString "csr_rdata" = Just $ (maybe 0 $ toInteger . rvfi_csr_rdata) . rvfi_csr_data
+rvfiGetFromString "csr_wdata" = Just $ (maybe 0 $ toInteger . rvfi_csr_wdata) . rvfi_csr_data
+rvfiGetFromString "csr_addr"  = Just $ (maybe 0 $ toInteger . rvfi_csr_addr) . rvfi_csr_data
 rvfiGetFromString _           = Nothing
 
 rvfi_rd_wdata_or_zero :: RVFI_Packet -> Word64
@@ -175,6 +180,12 @@ data RVFI_MemAccessData = RVFI_MemAccessData {
 , rvfi_mem_wmask :: {-# UNPACK #-} !Word32
 , rvfi_mem_rdata :: {-# UNPACK #-} !Basement.Types.Word256.Word256
 , rvfi_mem_wdata :: {-# UNPACK #-} !Basement.Types.Word256.Word256
+}
+
+data RVFI_CSRData = RVFI_CSRData {
+  rvfi_csr_addr  :: {-# UNPACK #-} !Word16
+, rvfi_csr_rdata :: {-# UNPACK #-} !Word64
+, rvfi_csr_wdata :: {-# UNPACK #-} !Word64
 }
 
 data RVFI_CheriData = RVFI_CheriData {
@@ -240,13 +251,14 @@ rvfiReadV2Response (reader, name, verbosity) = do
   connectionDebugMessage 3 connInfo ("features: " ++ (printf "0x%016x" availableFeatures))
   (intData, rf1, numBytes1) <- rvfiMaybeReadIntData (reader, name, verbosity) availableFeatures
   (memData, rf2, numBytes2) <- rvfiMaybeReadMemData (reader, name, verbosity) rf1
-  (cheriData, rf3, numBytes3) <- rvfiMaybeReadCheriData (reader, name, verbosity) rf2
-  when (rf3 /= 0) $
-    errorWithContext name ("Remaining unknown feature bits set: " ++ show rf3)
-  let remainingBytes = (fromIntegral traceSize) - 64 - numBytes1 - numBytes2 - numBytes3
+  (csrData, rf3, numBytes3) <- rvfiMaybeReadCSRData (reader, name, verbosity) rf2
+  (cheriData, rf4, numBytes4) <- rvfiMaybeReadCheriData (reader, name, verbosity) rf3
+  when (rf4 /= 0) $
+    errorWithContext name ("Remaining unknown feature bits set: " ++ show rf4)
+  let remainingBytes = (fromIntegral traceSize) - 64 - numBytes1 - numBytes2 - numBytes3 - numBytes4
   when (remainingBytes /= 0) $
     errorWithContext name ("Did not read all bytes of V2 trace packet: " ++ show remainingBytes ++ " remaining")
-  return $ basicData {rvfi_int_data = intData, rvfi_mem_data = memData, rvfi_cheri_data=cheriData}
+  return $ basicData {rvfi_int_data = intData, rvfi_mem_data = memData, rvfi_csr_data=csrData, rvfi_cheri_data=cheriData}
 
 rvfiDecodeV2Header :: Get (RVFI_Packet, RVFIFeatures)
 rvfiDecodeV2Header = do
@@ -276,6 +288,7 @@ rvfiDecodeV2Header = do
     , rvfi_pc_wdata = pc_wdata
     , rvfi_int_data = Nothing
     , rvfi_mem_data = Nothing
+    , rvfi_csr_data = Nothing
     , rvfi_cheri_data = Nothing
     }, availableFeatures)
 
@@ -335,6 +348,26 @@ rvfiDecodeMemData = do
     , rvfi_mem_wmask = mem_wmask
     , rvfi_mem_rdata = Basement.Types.Word256.Word256 rdata4 rdata3 rdata2 rdata1
     , rvfi_mem_wdata = Basement.Types.Word256.Word256 wdata4 wdata3 wdata2 wdata1
+    }
+
+rvfiMaybeReadCSRData :: (Int64 -> IO BS.ByteString, String, Int) -> RVFIFeatures -> IO (Maybe RVFI_CSRData, RVFIFeatures, Int)
+rvfiMaybeReadCSRData connection availableFeatures = do
+  let remainingFeatures = availableFeatures .&. (complement 0x8)
+  if ((availableFeatures .&. 0x8) == 0)
+    then do return (Nothing, remainingFeatures, 0)
+    else do
+      bytes <- rvfiReadDataPacketWithMagic connection 26 "csr-data"
+      return $ (Just (runGet (isolate 18 rvfiDecodeCSRData) bytes), remainingFeatures, 26)
+
+rvfiDecodeCSRData :: Get RVFI_CSRData
+rvfiDecodeCSRData = do
+  csr_rdata <- getWord64le
+  csr_wdata <- getWord64le
+  csr_addr  <- getWord16le
+  return $! RVFI_CSRData {
+      rvfi_csr_rdata = csr_rdata
+    , rvfi_csr_wdata = csr_wdata
+    , rvfi_csr_addr  = csr_addr
     }
 
 rvfiMaybeReadCheriData :: (Int64 -> IO BS.ByteString, String, Int) -> RVFIFeatures -> IO (Maybe RVFI_CheriData, RVFIFeatures, Int)
@@ -426,6 +459,7 @@ rvfiDecodeV1Response = do
         , rvfi_mem_rdata = Basement.Types.Word256.Word256 0 0 0 mem_rdata
         , rvfi_mem_wdata = Basement.Types.Word256.Word256 0 0 0 mem_wdata
         }
+    , rvfi_csr_data = Nothing
     , rvfi_cheri_data = Nothing
     }
 
@@ -445,6 +479,7 @@ rvfiEmptyHaltPacket = RVFI_Packet {
     , rvfi_pc_wdata = 0
     , rvfi_int_data = Nothing
     , rvfi_mem_data = Nothing
+    , rvfi_csr_data = Nothing
     , rvfi_cheri_data = Nothing
     }
 
@@ -480,6 +515,14 @@ instance Show RVFI_MemAccessData where
             | mask <= 65535 = printf "0x%032x" value
             | otherwise = printf "0x%064x" value
 
+instance Show RVFI_CSRData where
+  show tok =
+    printf
+      "CSR: 0x%03x, CSRRD: 0x%016x, CSRWD: 0x%016x, "
+      (rvfi_csr_addr tok) -- CSR
+      (rvfi_csr_rdata tok) -- CSRRD
+      (rvfi_csr_wdata tok) -- CSRWD
+
 fmtRVFICheriData :: RVFI_CheriData -> [String]
 fmtRVFICheriData tok =
   [printCapNz "CD: %02d, CWD: 0x%032x, CWT: %01x, " (rvfi_cd_addr tok) (rvfi_cd_wdata tok) (rvfi_cd_wtag tok),
@@ -508,11 +551,12 @@ instance Show RVFI_Packet where
     | rvfiIsHalt tok = "halt token"
     | otherwise =
       printf
-        "Trap: %5s, PCRD: 0x%016x, %s%sI: 0x%016x %s XL:%s (%s)"
+        "Trap: %5s, PCRD: 0x%016x, %s%s%sI: 0x%016x %s XL:%s (%s)"
         (show $ rvfi_trap tok /= 0) -- Trap
         (rvfi_pc_rdata tok) -- PCRD
         (showIntCapReg (rvfi_int_data tok) (rvfi_cheri_data tok)) -- int/cap reg data
         (maybe "" show $ rvfi_mem_data tok) -- mem data
+        (maybe "" show $ rvfi_csr_data tok) -- CSR data
         (rvfi_insn tok)
         (privString (rvfi_mode tok))
         (xlenString (rvfi_ixl tok))
@@ -571,6 +615,9 @@ getRS2RData _is64 pkt = maskUpper    _is64 (maybe 0 rvfi_rs2_rdata $ rvfi_int_da
 getCS2RData _is64 pkt = maskUpperCap _is64 (maybe 0 (toNatural . rvfi_cs2_rdata) $ rvfi_cheri_data pkt)
 getCS2RTag pkt = maybe 0 rvfi_cs2_rtag $ rvfi_cheri_data pkt
 getMemAddr _is64 pkt = maskUpper _is64 (maybe 0 rvfi_mem_addr $ rvfi_mem_data pkt)
+getCSRAddr pkt = maybe 0 rvfi_csr_addr $ rvfi_csr_data pkt
+getCSRRData _is64 pkt = maskUpper _is64 (maybe 0 rvfi_csr_rdata $ rvfi_csr_data pkt)
+getCSRWData _is64 pkt = maskUpper _is64 (maybe 0 rvfi_csr_wdata $ rvfi_csr_data pkt)
 
 _checkField :: Bool -> String -> Bool -> String -> Maybe String
 _checkField cond msg matches ctx = if not cond || matches then Nothing else Just ("mismatch in field " ++ msg ++ ": " ++ ctx)
@@ -611,7 +658,10 @@ rvfiCheck strict is64 x y
             checkField True "pc_rdata" printHex (maskUpper is64 (rvfi_pc_rdata x)) (maskUpper is64 (rvfi_pc_rdata y)),
             checkField (strict || ((maybe 0 rvfi_mem_wmask (rvfi_mem_data x)) /= 0)) "mem_addr" printHex (getMemAddr is64 x) (getMemAddr is64 y),
             _checkField (strict || rvfi_trap x == 0) "mem_wdata" (compareMemData is64 x y rvfi_mem_wmask rvfi_mem_wdata) "", -- TODO: context
-            _checkField (strict || rvfi_trap x == 0) "mem_rdata" (compareMemData is64 x y rvfi_mem_rmask rvfi_mem_rdata) "" -- TODO: context
+            _checkField (strict || rvfi_trap x == 0) "mem_rdata" (compareMemData is64 x y rvfi_mem_rmask rvfi_mem_rdata) "", -- TODO: context
+            checkField (strict || rvfi_trap x == 0) "csr_addr"  show (getCSRAddr x) (getCSRAddr y),
+            checkField (strict || rvfi_trap x == 0) "csr_rdata" printHex (getCSRRData is64 x) (getCSRRData is64 y),
+            checkField (strict || rvfi_trap x == 0) "csr_wdata" printHex (getCSRWData is64 x) (getCSRWData is64 y)
           ]
         printHex x = "0x" ++ showHex x ""
 
