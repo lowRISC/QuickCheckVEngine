@@ -51,9 +51,9 @@ msiFixedTest :: Template
 msiFixedTest = random $ do
   return $ mconcat [
                      inst $ auipc 8 4, -- read pcc capability, offset to create some target address
-                     inst $ cspecialrw 0 28 8, -- write new trap capability in mtcc
-                     inst $ csrrsi 0 (unsafe_csrs_indexFromName "mie") (1 `shiftL` 3) , -- set Machine Software Interrupt Enable
-                     inst $ csrrsi 0 (unsafe_csrs_indexFromName "mstatus") (1 `shiftL` 3) , -- set global Machine Interrupt Enable
+                     inst $ cspecialrw 4 28 8, -- write new trap capability in mtcc
+                     inst $ csrrsi 4 (unsafe_csrs_indexFromName "mie") (1 `shiftL` 3) , -- set Machine Software Interrupt Enable
+                     inst $ csrrsi 4 (unsafe_csrs_indexFromName "mstatus") (1 `shiftL` 3) , -- set global Machine Interrupt Enable
                      intReq 3, -- 3 = Machine Software Interrupt
                      intBar,
                      inst $ csrrs 10 (unsafe_csrs_indexFromName "mcause") 0, -- check mcause
@@ -81,9 +81,9 @@ msiRandTest = random $ do
                         slli tmpReg2 tmpReg2 4,                       -- | fit within in RVFI 64KiB sram (usually)
                         addi tmpReg2 tmpReg2 (imm .&. 0xC),           -- | and 4-byte aligned
                         cincaddr tmpReg3 tmpReg1 tmpReg2, -- create capability to trap entry
-                        cspecialrw 0 28 tmpReg3, -- write new trap capability to mtcc
-                        csrrsi 0 (unsafe_csrs_indexFromName "mie") (1 `shiftL` 3), -- set Machine Software Interrupt Enable
-                        csrrsi 0 (unsafe_csrs_indexFromName "mstatus") (1 `shiftL` 3) -- set global Machine Interrupt Enable
+                        cspecialrw tmpReg1 28 tmpReg3, -- write new trap capability to mtcc
+                        csrrsi tmpReg1 (unsafe_csrs_indexFromName "mie") (1 `shiftL` 3), -- set Machine Software Interrupt Enable
+                        csrrsi tmpReg1 (unsafe_csrs_indexFromName "mstatus") (1 `shiftL` 3) -- set global Machine Interrupt Enable
                       ]),
                       genAll,
                       intReq 3, -- set mip[3] (Machine Software Interrupt)
