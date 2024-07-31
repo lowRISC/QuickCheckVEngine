@@ -659,9 +659,9 @@ rvfiCheck strict is64 x y
             checkField (strict || ((maybe 0 rvfi_mem_wmask (rvfi_mem_data x)) /= 0)) "mem_addr" printHex (getMemAddr is64 x) (getMemAddr is64 y),
             _checkField (strict || rvfi_trap x == 0) "mem_wdata" (compareMemData is64 x y rvfi_mem_wmask rvfi_mem_wdata) "", -- TODO: context
             _checkField (strict || rvfi_trap x == 0) "mem_rdata" (compareMemData is64 x y rvfi_mem_rmask rvfi_mem_rdata) "", -- TODO: context
-            checkField (strict || rvfi_trap x == 0) "csr_addr"  show (getCSRAddr x) (getCSRAddr y),
-            checkField (strict || rvfi_trap x == 0) "csr_rdata" printHex (getCSRRData is64 x) (getCSRRData is64 y),
-            checkField (strict || rvfi_trap x == 0) "csr_wdata" printHex (getCSRWData is64 x) (getCSRWData is64 y)
+            checkField strict "csr_addr" show (getCSRAddr x) (getCSRAddr y),
+            checkField strict "csr_rdata" printHex (getCSRRData is64 x) (getCSRRData is64 y),
+            checkField strict "csr_wdata" printHex (getCSRWData is64 x) (getCSRWData is64 y)
           ]
         printHex x = "0x" ++ showHex x ""
 
