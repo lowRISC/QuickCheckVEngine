@@ -518,10 +518,10 @@ instance Show RVFI_MemAccessData where
 instance Show RVFI_CSRData where
   show tok =
     printf
-      "CSR: 0x%03x, CSRRD: 0x%016x, CSRWD: 0x%016x, "
+      "CSR: 0x%03x, CSRD: 0x%016x, CSWD: 0x%016x, "
       (rvfi_csr_addr tok) -- CSR
-      (rvfi_csr_rdata tok) -- CSRRD
-      (rvfi_csr_wdata tok) -- CSRWD
+      (rvfi_csr_rdata tok) -- CSRD
+      (rvfi_csr_wdata tok) -- CSWD
 
 fmtRVFICheriData :: RVFI_CheriData -> [String]
 fmtRVFICheriData tok =
