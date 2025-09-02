@@ -63,11 +63,13 @@ import QuickCheckVEngine.RVFI_DII
 import qualified QuickCheckVEngine.Template as T
 import QuickCheckVEngine.Test
 import QuickCheckVEngine.Templates.Utils
+import QuickCheckVEngine.Templates.GenConstrainedCapMod
 import QuickCheckVEngine.Templates.GenAll
 import QuickCheckVEngine.Templates.GenArithmetic
 import QuickCheckVEngine.Templates.GenMemory
 import QuickCheckVEngine.Templates.GenCSRs
 import QuickCheckVEngine.Templates.RandomTest
+import QuickCheckVEngine.Templates.GenRandomCapMod
 import QuickCheckVEngine.Templates.GenControlFlow
 import QuickCheckVEngine.Templates.GenMulDiv
 import QuickCheckVEngine.Templates.GenCompressed
@@ -232,9 +234,11 @@ commandOpts argv =
 allTests :: [(String, String, ArchDesc -> Bool, T.Template)]
 allTests = [
              ("arith",      "Arithmetic Verification",                                const True,                               T.repeatTillEnd gen_rv32_i_arithmetic)
-           -- CSC: Capability Speculation Constraint
-           -- BSC: Branching Speculation Constraint
-           -- TSC: Translation Speculation Constraint
+           , ("constrained_test",   "Constrained CHERIoT testing",                    has_cheri,                                T.repeatTillEnd genRandomCHERIoTConstrainedCapModTest)
+           , ("random_test",   "Random CHERIoT testing",                              has_cheri,                                T.repeatTillEnd genRandomCHERIoTCapModTest)
+          -- CSC: Capability Speculation Constraint
+          -- BSC: Branching Speculation Constraint
+          -- TSC: Translation Speculation Constraint
           --  , ("csc_data",   "Data CSC Verification",                                  andPs [has_cheri, has_icsr, has_ihpm],              gen_csc_data_verify) -- CHERIoT Ibex is not very speculative & test is hard to adapt, so disable for now
            , ("bsc_cond_1", "BSC Condition 1 Verification",                           andPs [has_cheri, has_icsr, has_ihpm, has_xlen_64], gen_bsc_cond_1_verify)
            , ("bsc_jumps",  "BSC Jumps Verification",                                 andPs [has_cheri, has_icsr, has_ihpm, has_xlen_64], gen_bsc_jumps_verify)
