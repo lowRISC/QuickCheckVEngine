@@ -55,6 +55,8 @@ executable QCVEngine
                        QuickCheckVEngine.Templates.GenInterrupt,
                        QuickCheckVEngine.Templates.GenAll,
                        QuickCheckVEngine.Templates.GenTransExec,
+                       QuickCheckVEngine.Templates.GenRandomCapMod,
+                       QuickCheckVEngine.Templates.GenConstrainedCapMod,
                        QuickCheckVEngine.Templates.RandomTest
   other-extensions:    FlexibleInstances, MultiParamTypeClasses,
                        FunctionalDependencies, OverloadedStrings,

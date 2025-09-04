@@ -139,7 +139,7 @@ legalCapLoad addrReg targetReg = random $ do
   return $ instSeq [ andi addrReg addrReg 0xff
                    , lui tmpReg 0x40004
                    , slli tmpReg tmpReg 1
-                   , add addrReg tmpReg addrReg
+                   , cincaddr addrReg addrReg tmpReg
                   --  , cload targetReg addrReg 0x17 -- CHERIoT lacks mem loads w/explicit addr, replace lc.ddc (0x17) with clc
                    , clc targetReg addrReg 0]        -- CHERIoT lacks mem loads w/explicit addr, replace lc.ddc (0x17) with clc
 
@@ -150,7 +150,7 @@ legalCapStore addrReg = random $ do
   return $ instSeq [ andi addrReg addrReg 0xff
                    , lui tmpReg 0x40004
                    , slli tmpReg tmpReg 1
-                   , add addrReg tmpReg addrReg
+                   , cincaddr addrReg addrReg tmpReg
                   --  , cstore dataReg addrReg 0x4 -- CHERIoT lacks mem stores w/explicit addr, replace sc.ddc (0x04) with csc
                    , csc dataReg addrReg 0]        -- CHERIoT lacks mem stores w/explicit addr, replace sc.ddc (0x04) with csc
 
