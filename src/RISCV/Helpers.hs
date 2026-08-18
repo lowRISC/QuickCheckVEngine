@@ -78,6 +78,7 @@ module RISCV.Helpers (
 , prettyCR
 , prettyCR_1op
 , prettyCI
+, prettyCI_swap
 , prettyCI_sig
 , prettyCI_F
 , prettyCI_reg
@@ -93,6 +94,7 @@ module RISCV.Helpers (
 , prettyCS_F
 , prettyCA
 , prettyCB
+, prettyCB_swap
 , prettyCB_sig
 , prettyCB_reg
 , prettyCJ
@@ -391,6 +393,9 @@ prettyCR_1op instr rs1_rd =
 -- | CI-type 'Immediate' compressed instruction pretty printer
 prettyCI instr imm rs1_rd =
   concat [instr, " ", reg   rs1_rd, ", ", int imm]
+-- | CI-type (swapped order variant)
+prettyCI_swap instr rs1_rd imm =
+  concat [instr, " ", reg   rs1_rd, ", ", int imm]
 -- | CI-type (signed variant)
 prettyCI_sig ise instr imm rs1_rd =
   concat [instr, " ", reg   rs1_rd, ", ", int $ toSigned ise imm]
@@ -441,6 +446,9 @@ prettyCA instr rs1_rd' rs2' =
 
 -- | CB-type 'Branch' compressed instruction pretty printer
 prettyCB instr imm rs1' =
+  concat [instr, " ", reg' rs1', ", ", int imm]
+-- | CB-type (swapped order variant)
+prettyCB_swap instr rs1' imm =
   concat [instr, " ", reg' rs1', ", ", int imm]
 -- | CB-type (signed variant)
 prettyCB_sig ise instr imm rs1' =

@@ -128,13 +128,13 @@ module RISCV.RV_C (
 
 import RISCV.Helpers (XLen,
                       prettyCR, prettyCR_1op,
-                      prettyCI, prettyCI_sig, prettyCI_F, prettyCI_reg, prettyCI_imm, prettyCI_sig_imm,
+                      prettyCI, prettyCI_swap, prettyCI_sig, prettyCI_F, prettyCI_reg, prettyCI_imm, prettyCI_sig_imm,
                       prettyCSS, prettyCSS_F,
                       prettyCIW, prettyCIW_reg,
                       prettyCL, prettyCL_F,
                       prettyCS, prettyCS_F,
                       prettyCA,
-                      prettyCB, prettyCB_sig, prettyCB_reg,
+                      prettyCB, prettyCB_swap, prettyCB_sig, prettyCB_reg,
                       prettyCJ,
                       prettyIgnr1, prettyIgnr2, prettyIgnr3)
 import InstrCodec (DecodeBranch, (-->), encode, Instruction)
@@ -208,7 +208,7 @@ c_srli64_raw            =                            "100         0 00 rs1'_rd'[
 c_srli64_hint rs1'_rd'  = encode c_srli64_raw                          rs1'_rd'                       --  RV32C/RV64C HINT instr
 c_srli64 rs1'_rd'       = encode c_srli64_raw                          rs1'_rd'                       --  RV128C
 c_srli_nse_raw          =                            "100         1 00 rs1'_rd'[2:0]  nzuimm[4:0] 01" -- RV32C NSE (reserved for custom extensions)
-c_srli_nse rs1'_rd' nzuimm = encode c_srli_nse_raw        nzuimm       rs1'_rd'                       -- RV32C NSE (reserved for custom extensions)
+c_srli_nse rs1'_rd' nzuimm = encode c_srli_nse_raw                     rs1'_rd'       nzuimm          -- RV32C NSE (reserved for custom extensions)
 c_srli_raw              =                            "100         0 00 rs1'_rd'[2:0]  nzuimm[4:0] 01" -- NOTE: RV32 encoding (no nzuimm[5])
 c_srli rs1'_rd' nzuimm  = encode c_srli_raw                            rs1'_rd'       nzuimm -- NOTE: RV32 encoding (no nzuimm[5])
 c_srai64_raw            =                            "100         0 01 rs1'_rd'[2:0]        00000 01" -- V MULTI V
@@ -217,7 +217,7 @@ c_srai64_hint rs1'_rd'  = encode c_srai64_raw                          rs1'_rd' 
 c_srai_nse_raw          =                            "100         1 01 rs1'_rd'[2:0]  nzuimm[4:0] 01" -- RV32C NSE (reserved for custom extensions)
 c_srai_nse rs1'_rd' nzuimm = encode c_srai_nse_raw                     rs1'_rd'       nzuimm          -- RV32C NSE (reserved for custom extensions)
 c_srai_raw              =                            "100         0 01 rs1'_rd'[2:0]  nzuimm[4:0] 01" -- NOTE: RV32 encoding (no nzuimm[5])
-c_srai rs1'_rd' nzuimm  = encode c_srai_raw                            rs1'_rd'       nzuimm -- NOTE: RV32 encoding (no nzuimm[5])
+c_srai rs1'_rd' nzuimm  = encode c_srai_raw                            rs1'_rd'       nzuimm          -- NOTE: RV32 encoding (no nzuimm[5])
 c_andi_raw              =                            "100    imm[5] 10 rs1'_rd'[2:0]     imm[4:0] 01"
 c_andi rs1'_rd' imm     = encode c_andi_raw                  imm       rs1'_rd'
 c_sub_raw               =                            "100         0 11 rs1'_rd'[2:0] 00 rs2'[2:0] 01"
@@ -256,7 +256,7 @@ c_slli_hint nzuimm      = encode c_slli_hint_raw          nzuimm                
 c_slli_nse_raw          =                            "000         1 rs1_rd_nz[4:0]         nzuimm[4:0] 10" -- RV32C NSE (reserved for custom extensions)
 c_slli_nse rs1_rd_nz nzuimm = encode c_slli_nse_raw                 rs1_rd_nz              nzuimm          -- RV32C NSE (reserved for custom extensions)
 c_slli_raw              =                            "000         0 rs1_rd_nz[4:0]         nzuimm[4:0] 10" -- NOTE: RV32 encoding (no nzuimm[5])
-c_slli rs1_rd_nz nzuimm = encode c_slli_raw                         rs1_rd_nz              nzuimm -- NOTE: RV32 encoding (no nzuimm[5])
+c_slli rs1_rd_nz nzuimm = encode c_slli_raw                         rs1_rd_nz              nzuimm          -- NOTE: RV32 encoding (no nzuimm[5])
 c_fldsp_raw             =                            "001   uimm[5]        rd[4:0] uimm[4:3] uimm[8:6] 10" -- RV32DC/RV64DC
 c_fldsp rd uimm         = encode c_fldsp_raw                uimm           rd                              -- RV32DC/RV64DC
 c_lqsp_res_raw          =                            "001   uimm[5]          00000   uimm[4] uimm[9:6] 10" -- RV128C; REServed, rd==0
@@ -328,14 +328,14 @@ rv_c_32_disass = [ pad c_fld_raw          --> prettyCL_F "c.fld"
                  , pad c_fsw_raw          --> prettyCS_F "c.fsw"
 
                  , pad c_jal_raw          --> prettyCJ "c.jal"
-                 , pad c_srli_nse_raw     --> prettyCB "c.srli.nse"
+                 , pad c_srli_nse_raw     --> prettyCB_swap "c.srli.nse"
                  , pad c_srli64_raw       --> prettyCB_reg "c.srli64.hint"
-                 , pad c_srai_nse_raw     --> prettyCB "c.srai.nse"
+                 , pad c_srai_nse_raw     --> prettyCB_swap "c.srai.nse"
                  , pad c_srai64_raw       --> prettyCB_reg "c.srai64.hint"
                  , pad c_subw_raw         --> prettyCA "c.subw.res"
                  , pad c_addw_raw         --> prettyCA "c.addw.res"
 
-                 , pad c_slli_nse_raw     --> prettyCI "c.slli.nse"
+                 , pad c_slli_nse_raw     --> prettyCI_swap "c.slli.nse"
                  , pad c_slli64_raw       --> prettyCI_reg "c.slli64.hint"
                  , pad c_fldsp_raw        --> prettyCI_F "c.fldsp"
                  , pad c_flwsp_raw        --> prettyCI_F "c.flwsp"
@@ -438,8 +438,8 @@ rv_c_common_disass = [ pad c_illegal_raw      --> "c.illegal"
                      , pad c_lui_hint_raw     --> prettyCI_sig_imm 18  "c.lui.hint"
                      , pad c_lui_res_raw      --> prettyCI_reg         "c.lui.res"
                      , pad c_lui_raw          --> prettyCI_sig     18  "c.lui"
-                     , pad c_srli_raw         --> prettyCB "c.srli"
-                     , pad c_srai_raw         --> prettyCB "c.srai"
+                     , pad c_srli_raw         --> prettyCB_swap "c.srli"
+                     , pad c_srai_raw         --> prettyCB_swap "c.srai"
                      , pad c_andi_raw         --> prettyCB_sig 6 "c.andi"
                      , pad c_sub_raw          --> prettyCA "c.sub"
                      , pad c_xor_raw          --> prettyCA "c.xor"
@@ -453,7 +453,7 @@ rv_c_common_disass = [ pad c_illegal_raw      --> "c.illegal"
 
                      , pad c_slli64_hint0_raw --> "c.slli64.hint"
                      , pad c_slli_hint_raw    --> prettyCI_imm "c.slli.hint"
-                     , pad c_slli_raw         --> prettyCI     "c.slli"
+                     , pad c_slli_raw         --> prettyCI_swap "c.slli"
                      , pad c_lwsp_res_raw     --> prettyCI_imm  "c.lwsp.res"
                      , pad c_lwsp_raw         --> prettyCI      "c.lwsp"
                      , pad c_jr_res_raw       -->              "c.jr.res"
