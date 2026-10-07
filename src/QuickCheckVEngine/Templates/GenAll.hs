@@ -72,9 +72,9 @@ genAll = readParams $ \params -> random $ do
            ++ [[ (8, instUniform (rv64_i_arith src1 src2 dest imm))
                , (8, instUniform (rv64_i_mem src1 src2 dest offset))
                ] | has_xlen_64 desc]
-           ++ [[ (8, instUniform (rv32_m src1 src2 imm))
+           ++ [[ (8, instUniform (rv32_m src1 src2 dest))
                ] | has_m desc]
-           ++ [[ (8, instUniform (rv64_m src1 src2 imm))
+           ++ [[ (8, instUniform (rv64_m src1 src2 dest))
                ] | has_m desc && has_xlen_64 desc]
            ++ [[ (8, instUniform (rv32_a src1 src2 dest aq rl))
                ] | has_a desc]
