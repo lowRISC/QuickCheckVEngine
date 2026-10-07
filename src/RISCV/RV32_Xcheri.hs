@@ -219,7 +219,7 @@ cmove_raw                          =                                        "111
 cmove cd cs1                       = encode cmove_raw                                      cs1          cd
 cspecialrw_raw                     =                                        "0000001 cSP[4:0] cs1[4:0] 000 cd[4:0] 1011011"
 cspecialrw cd cSP cs1              = encode cspecialrw_raw                           cSP      cs1          cd
-auicgp_raw                         =                                        "imm[31:12] cd[4:0] 1111011"
+auicgp_raw                         =                                        "imm[19:0] cd[4:0] 1111011"
 auicgp cd imm                      = encode auicgp_raw                       imm        cd
 -- auipcc uses same encoding as auipc, so just use auipc
 -- auipcc_raw                         =                                        "imm[31:12] cd[4:0] 0010111"
