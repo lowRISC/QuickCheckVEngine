@@ -78,15 +78,29 @@ rv_pretty :: Instruction -> Maybe XLen-> String
 rv_pretty instr ixl = case decode 32 instr instList of
   Nothing -> "Unknown instruction"
   Just i -> i
-  where instList =    rv32_i_disass ++ rv64_i_disass
-                   ++ rv32_m_disass ++ rv64_m_disass
-                   ++ rv32_a_disass ++ rv64_a_disass
-                   ++ rv32_f_disass ++ rv64_f_disass
-                   ++ rv32_d_disass ++ rv64_d_disass
-                   ++ rv32_zicsr_disass
-                   ++ rv32_zifencei_disass
-                   ++ rv32_xcheri_disass
-                   ++ rv_c_disass ixl
+  where -- RV64 ld/sd share their encodings with CHERI clc/csc, so the first table to match wins.
+        -- Decode as RV64 only when the trace says RV64 (ixl 2); otherwise (RV32, or no ixl, as
+        -- in Show) the RV32 and Xcheri tables come first.
+        instList | ixl == Just 2 =    rv32_i_disass ++ rv64_i_disass
+                                   ++ rv32_m_disass ++ rv64_m_disass
+                                   ++ rv32_a_disass ++ rv64_a_disass
+                                   ++ rv32_f_disass ++ rv64_f_disass
+                                   ++ rv32_d_disass ++ rv64_d_disass
+                                   ++ rv32_zicsr_disass
+                                   ++ rv32_zifencei_disass
+                                   ++ rv32_xcheri_disass
+                                   ++ rv_c_disass ixl
+                 | otherwise   =    rv32_i_disass
+                                   ++ rv32_m_disass
+                                   ++ rv32_a_disass
+                                   ++ rv32_f_disass
+                                   ++ rv32_d_disass
+                                   ++ rv32_zicsr_disass
+                                   ++ rv32_zifencei_disass
+                                   ++ rv32_xcheri_disass
+                                   ++ rv_c_disass ixl
+                                   ++ rv64_i_disass ++ rv64_m_disass ++ rv64_a_disass
+                                   ++ rv64_f_disass ++ rv64_d_disass
 
 instance Show Instruction where
   show i@(MkInstruction v) = printf ".4byte 0x%08x # %s" v (rv_pretty i Nothing)

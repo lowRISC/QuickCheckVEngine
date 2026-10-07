@@ -149,7 +149,7 @@ c_addi4spn rd' nzuimm   = encode c_addi4spn_raw           nzuimm                
 c_fld_raw               =                            "001   uimm[5:3]             rs1'[2:0]       uimm[7:6] rd'[2:0] 00" -- V MULTI V
 c_fld rd' rs1' uimm     = encode c_fld_raw                  uimm                  rs1'                      rd'          --  RV32DC/RV64DC
 c_lq_raw                =                            "001   uimm[5:4]     uimm[8] rs1'[2:0]       uimm[7:6] rd'[2:0] 00" -- v
-c_lq rd' rs1' uimm      = encode c_lq_raw                   uimm          uimm    rs1'                      rd'          --  RV128C
+c_lq rd' rs1' uimm      = encode c_lq_raw                   uimm                  rs1'                      rd'          --  RV128C
 c_lw_raw                =                            "010   uimm[5:3]             rs1'[2:0] uimm[2] uimm[6] rd'[2:0] 00"
 c_lw rd' rs1' uimm      = encode c_lw_raw                   uimm                  rs1'                      rd'
 c_flw_raw               =                            "011   uimm[5:3]             rs1'[2:0] uimm[2] uimm[6] rd'[2:0] 00" -- V MULTI V
@@ -164,7 +164,7 @@ c_res_a ignr            = encode c_res_a_raw                                    
 c_fsd_raw               =                            "101   uimm[5:3]            rs1'[2:0]       uimm[7:6] rs2'[2:0] 00" -- V MULTI V
 c_fsd rs1' rs2' uimm    = encode c_fsd_raw                  uimm                 rs1'                      rs2'          --  RV32DC/RV64DC
 c_sq_raw                =                            "101   uimm[5:4]   uimm[8]  rs1'[2:0]       uimm[7:6] rs2'[2:0] 00" -- v
-c_sq rs1' rs2' uimm     = encode c_sq_raw                   uimm        uimm     rs1'                      rs2'          --  RV128C
+c_sq rs1' rs2' uimm     = encode c_sq_raw                   uimm                 rs1'                      rs2'          --  RV128C
 c_sw_raw                =                            "110   uimm[5:3]            rs1'[2:0] uimm[2] uimm[6] rs2'[2:0] 00"
 c_sw rs1' rs2' uimm     = encode c_sw_raw                   uimm                 rs1'                      rs2'
 c_fsw_raw               =                            "111   uimm[5:3]            rs1'[2:0] uimm[2] uimm[6] rs2'[2:0] 00" -- V MULTI V
@@ -350,8 +350,8 @@ rv_c_64_disass = [ pad c_fld_raw          --> prettyCL_F "c.fld"
                  , pad c_fsd_raw          --> prettyCS_F "c.fsd"
                  , pad c_sd_raw           --> prettyCS   "c.sd"
 
-                 , pad c_addiw_raw        --> prettyCI_sig     6 "c.addiw"
                  , pad c_addiw_res_raw    --> prettyCI_sig_imm 6 "c.addiw.res"
+                 , pad c_addiw_raw        --> prettyCI_sig     6 "c.addiw"
                  , pad c_srli64_raw       --> prettyCB_reg "c.srli64.hint"
                  , pad c_srai64_raw       --> prettyCB_reg "c.srai64.hint"
                  , pad c_subw_raw         --> prettyCA "c.subw"
@@ -368,11 +368,11 @@ rv_c_64_disass = [ pad c_fld_raw          --> prettyCL_F "c.fld"
 rv_c_128_disass :: [DecodeBranch String]
 rv_c_128_disass = [ pad c_lq_raw           --> prettyCL   "c.lq"
                   , pad c_ld_raw           --> prettyCL   "c.ld"
-                  , pad c_sq_raw           --> prettyCS_F "c.sq"
+                  , pad c_sq_raw           --> prettyCS   "c.sq"
                   , pad c_sd_raw           --> prettyCS   "c.sd"
 
-                  , pad c_addiw_raw        --> prettyCI_sig     6 "c.addiw"
                   , pad c_addiw_res_raw    --> prettyCI_sig_imm 6 "c.addiw.res"
+                  , pad c_addiw_raw        --> prettyCI_sig     6 "c.addiw"
                   , pad c_srli64_raw       --> prettyCB_reg "c.srli64"
                   , pad c_srai64_raw       --> prettyCB_reg "c.srai64"
                   , pad c_subw_raw         --> prettyCA "c.subw"
@@ -421,8 +421,8 @@ rv_c_multi_disass = [ pad c_lq_raw           --> prettyIgnr3 "c.fld (RV32DC/RV64
 -- | Should be a correct disassembly regardless of XLEN.
 rv_c_common_disass :: [DecodeBranch String]
 rv_c_common_disass = [ pad c_illegal_raw      --> "c.illegal"
-                     , pad c_addi4spn_raw     --> prettyCIW     "c.addi4spn"
                      , pad c_addi4spn_res_raw --> prettyCIW_reg "c.addi4spn.res"
+                     , pad c_addi4spn_raw     --> prettyCIW     "c.addi4spn"
                      , pad c_lw_raw           --> prettyCL "c.lw"
                      , pad c_res_a_raw        --> prettyIgnr1 "c.reserved"
                      , pad c_sw_raw           --> prettyCS "c.sw"

@@ -294,7 +294,7 @@ prettyF pred succ =
   concat ["fence ", int pred, ", ", int succ]
 
 -- | Pretty printer for sfence.vma instructions
-prettySfence rs1 rs2 =
+prettySfence rs2 rs1 =
   concat ["sfence.vma ", int rs1, ", ", int rs2]
 
 -- | R-type, 2-operand instruction pretty printer
@@ -384,7 +384,7 @@ prettyS_F instr imm rs2 rs1 =
 -- ** Compressed Instructions
 
 -- | CR-type 'Register' compressed instruction pretty printer
-prettyCR instr rs2 rs1_rd =
+prettyCR instr rs1_rd rs2 =
   concat [instr, " ", reg rs1_rd, ", ", reg rs2]
 -- | CR-type (single-operand variant)
 prettyCR_1op instr rs1_rd =
@@ -427,10 +427,10 @@ prettyCIW_reg instr rd' =
   concat [instr, " ", reg' rd']
 
 -- | CL-type 'Load' compressed instruction pretty printer
-prettyCL instr imm rd' rs1' =
+prettyCL instr imm rs1' rd' =
   concat [instr, " ", reg'   rd', ", ", reg' rs1', "[", int imm, "]"]
 -- | CL-type (floating-point variant)
-prettyCL_F instr imm rd' rs1' =
+prettyCL_F instr imm rs1' rd' =
   concat [instr, " ", fpReg' rd', ", ", reg' rs1', "[", int imm, "]"]
 
 -- | CS-type 'Store' compressed instruction pretty printer
