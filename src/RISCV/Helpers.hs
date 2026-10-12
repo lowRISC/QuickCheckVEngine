@@ -103,7 +103,11 @@ module RISCV.Helpers (
 , prettyIgnr3
 -- * Others
 , reg
+, reg'
+, fpReg
+, fpReg'
 , int
+, toSigned
 , fpRoundingMode
 , PrivMode
 , privString

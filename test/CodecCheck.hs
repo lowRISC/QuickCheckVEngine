@@ -18,43 +18,28 @@
     truncates each value to its field, so a mistake still builds and still
     produces legal-looking instructions.
 
-    Each entry below names an encoder and, in the encoder's parameter order,
-    the format field each parameter must land in. For every entry:
-
-      static: the encoder is run at the 'Probe' result type, which records the
-              format string and the argument list it passed to 'encode'. The
-              argument count must equal the number of distinct fields, and
-              parameter k must land in the field the table names for it.
-
-      random: distinct random values per field are encoded and
-              (a) decoded with the format ('rhsArgs'), which must give back
-                  what 'encode' was given;
-              (b) disassembled with the module's own disassembly table, which
-                  must print the expected text, written below per instruction
-                  from the assembly syntax by field NAME, never by position;
-              (c) for RV32 instructions with an entry in 'rv_extract', the
-                  extracted rs1/rs2/rd must be the encoded registers and
-                  re-encoding them must give the same instruction.
-
-    The table is hand-written: Haskell cannot list a module's encoders or
-    recover their parameter names. A new encoder is covered only once it is
-    added here.
+    Each entry names an encoder and, in its parameter order, the field each
+    parameter must land in. The encoder must route every parameter to that
+    field (static check); for random values, the module's disassembly table
+    must print the expected text and, for 32-bit instructions with registers,
+    'rv_extract' must return them and re-encode the instruction. The 'rv_shrink'
+    tables are not checked. The table is hand-written: a new encoder is covered
+    only once it is added here.
 -}
 
 module Main (main) where
 
-import Control.Monad (forM, unless)
-import Data.Bits ((.&.), (.|.), bit, shiftL, testBit)
+import Control.Monad (filterM, unless)
+import Data.Bits ((.&.), (.|.), bit, complement, shiftL, testBit)
 import Data.List (elemIndex, intercalate, isInfixOf, sort)
 import Data.Maybe (fromMaybe, listToMaybe)
 import System.Exit (exitFailure)
 import Test.QuickCheck hiding ((.&.))
 import Text.Printf (printf)
 
-import InstrCodec ( Encode (..), Instruction (..), DecodeBranch, Token (..)
-                  , tokenise, tokenWidth, rangedVars, rhsArgs, fromBitList
-                  , decode, (#) )
-import qualified InstrCodec
+import InstrCodec ( Encode (..), Instruction (..), DecodeBranch, Token (..), tokenise, tokenWidth
+                  , rangedVars, decode )
+import RISCV.Helpers (reg, reg', fpReg, fpReg', int, toSigned)
 import RISCV.InstInspect (rv_extract, rv_pretty)
 import qualified RISCV.RV_C        as C
 import qualified RISCV.RV32_I      as I
@@ -69,10 +54,6 @@ data Probe = Probe String [Integer]
 
 instance Encode Integer Probe where
   enc args fmt = Probe fmt args
-
--- | The instruction the encoder builds when used at type 'Instruction'
-probeInstr :: Probe -> Instruction
-probeInstr (Probe fmt args) = enc args fmt
 
 -- | An encoder, at its arity. Nullary encoders are monomorphic
 --   'Instruction's (monomorphism restriction) and cannot be probed.
@@ -93,6 +74,11 @@ runEnc (E2 f) [a, b]    = f a b
 runEnc (E3 f) [a, b, c] = f a b c
 runEnc _ _ = error "runEnc: arity mismatch"
 
+-- | The instruction the encoder builds from these arguments
+instrOf :: Enc -> [Integer] -> Instruction
+instrOf (E0 i) _  = i
+instrOf e      vs = let Probe fmt args = runEnc e vs in enc args fmt
+
 -- * Formats
 
 fields :: String -> [String]
@@ -102,8 +88,18 @@ fieldMask :: String -> String -> Integer
 fieldMask fmt v =
   foldl (.|.) 0 [bit i | Range w hi lo <- tokenise fmt, w == v, i <- [lo .. hi]]
 
-fmtWidth :: String -> Int
-fmtWidth = sum . map tokenWidth . tokenise
+-- | The bits of the encoding that hold the named fields ('tokenise' lists the
+--   tokens LSB first)
+encodingMask :: String -> [String] -> Integer
+encodingMask fmt names = go 0 (tokenise fmt) 0
+  where
+    go _ [] m = m
+    go pos (t : ts) m =
+      let w  = tokenWidth t
+          m' = case t of
+                 Range n _ _ | n `elem` names -> foldl (.|.) m [bit i | i <- [pos .. pos + w - 1]]
+                 _                            -> m
+      in  go (pos + w) ts m'
 
 -- * Table entries
 
@@ -115,26 +111,26 @@ type Table = (String, [DecodeBranch String])
 data Entry = Entry
   { eName   :: String
   , eEnc    :: Enc
-  , eParams :: [String]       -- ^ field of each encoder parameter, in parameter order
-  , eTable  :: Maybe Table    -- ^ disassembly table to decode with
-  , eExpect :: Env -> String  -- ^ expected disassembly
-  , eAssume :: Env -> Bool    -- ^ restricts values to this encoding (see 'assuming')
+  , eParams :: [String]                      -- ^ field of each encoder parameter, in parameter order
+  , eDis    :: Maybe (Table, Env -> String)  -- ^ disassembly table and expected text
+  , eAssume :: Env -> Bool                   -- ^ restricts values to this encoding (see 'assuming')
   }
 
 ent :: String -> Enc -> [String] -> Table -> (Env -> String) -> Entry
-ent name enc ps tbl expect = Entry name enc ps (Just tbl) expect (const True)
+ent name e ps tbl expect = Entry name e ps (Just (tbl, expect)) (const True)
 
 -- | No disassembly check: the table decodes this encoding as something else
 noDis :: String -> Enc -> [String] -> Entry
-noDis name enc ps = Entry name enc ps Nothing (const "") (const True)
+noDis name e ps = Entry name e ps Nothing (const True)
 
--- | Values outside this predicate decode as an earlier, overlapping entry
---   of the disassembly table. Fields named *nz* are kept non-zero and
---   fields named *n2* are kept /= 2 without needing this.
+-- | Values outside this predicate decode as an earlier, overlapping entry of
+--   the disassembly table. Fields named *nz* are kept non-zero and fields
+--   named *n2* /= 2 by 'genArgs', which infers that from the name.
 assuming :: (Env -> Bool) -> Entry -> Entry
 assuming p e = e { eAssume = p }
 
--- ** Expected-text helpers, by field name
+-- ** Expected text, by field name. Register and immediate spelling comes from
+--    RISCV.Helpers: the check is which field lands in which operand slot.
 
 val :: Env -> String -> Integer
 val env n = fromMaybe (error $ "expected text refers to unknown field " ++ n)
@@ -147,32 +143,21 @@ ops m os = m ++ " " ++ intercalate ", " os
 mem :: String -> String -> String
 mem base off = base ++ "[" ++ off ++ "]"
 
-xr, cr, fr, cfr, un :: Env -> String -> String
-xr  v n = "x" ++ show (val v n)       -- integer register
-cr  v n = "x" ++ show (val v n + 8)   -- RVC 3-bit integer register
-fr  v n = "f" ++ show (val v n)       -- FP register
-cfr v n = "f" ++ show (val v n + 8)   -- RVC 3-bit FP register
-un  v n = show (val v n)              -- unsigned immediate
-
-signed :: Int -> Integer -> Integer
-signed w i = if testBit i (w - 1) then i - bit w else i
+xr, cr, fr, cfr, un, scr :: Env -> String -> String
+xr  v n = reg    (val v n)         -- integer register
+cr  v n = reg'   (val v n)         -- RVC 3-bit integer register
+fr  v n = fpReg  (val v n)         -- FP register
+cfr v n = fpReg' (val v n)         -- RVC 3-bit FP register
+un  v n = int    (val v n)         -- unsigned immediate
+scr v n = X.name_scr (val v n)     -- special capability register
 
 -- | Signed immediate of width w
 sg :: Int -> Env -> String -> String
-sg w v n = show (signed w (val v n))
+sg w v n = int (toSigned w (val v n))
 
 -- | Signed immediate of width w held in units of 2 bytes (jal, branches)
 sg2 :: Int -> Env -> String -> String
-sg2 w v n = show (signed w (val v n `shiftL` 1))
-
--- | Special capability register names (the CHERI SCR numbering)
-scr :: Env -> String -> String
-scr v n = case val v n of
-  0  -> "pcc";   1  -> "ddc"
-  3  -> "utidc"; 4  -> "utcc"; 5  -> "utdc"; 6  -> "uscratchc"; 7  -> "uepcc"
-  11 -> "stidc"; 12 -> "stcc"; 13 -> "stdc"; 14 -> "sscratchc"; 15 -> "sepcc"
-  27 -> "mtidc"; 28 -> "mtcc"; 29 -> "mtdc"; 30 -> "mscratchc"; 31 -> "mepcc"
-  i  -> show i
+sg2 w v n = int (toSigned w (val v n `shiftL` 1))
 
 -- * The tables
 
@@ -184,7 +169,7 @@ rv32i  = ("rv32_i_disass",        I.rv32_i_disass)
 rv32m  = ("rv32_m_disass",        M.rv32_m_disass)
 xcheri = ("rv32_xcheri_disass",   X.rv32_xcheri_disass)
 
--- | Every encoder exported by RISCV.RV_C
+-- | Encoders exported by RISCV.RV_C
 rvcEntries :: [Entry]
 rvcEntries =
   -- Quadrant 0
@@ -270,7 +255,7 @@ rvcEntries =
   , ent "c_sdsp"         (E2 C.c_sdsp)         ["rs2", "uimm"]         rv64c  $ \v -> ops "c.sdsp"     [xr v "rs2", un v "uimm"]
   ]
 
--- | Every encoder exported by RISCV.RV32_I
+-- | Encoders exported by RISCV.RV32_I
 rv32iEntries :: [Entry]
 rv32iEntries =
      [ ent n e ["rd", "rs1", "rs2"] rv32i $ \v -> ops n [xr v "rd", xr v "rs1", xr v "rs2"]
@@ -303,7 +288,7 @@ rv32iEntries =
      , ent "ecall"     (E0 I.ecall)     [] rv32i $ \_ -> "ecall"
      , ent "ebreak"    (E0 I.ebreak)    [] rv32i $ \_ -> "ebreak" ]
 
--- | Every encoder exported by RISCV.RV32_M
+-- | Encoders exported by RISCV.RV32_M
 rv32mEntries :: [Entry]
 rv32mEntries =
   [ ent n e ["rd", "rs1", "rs2"] rv32m $ \v -> ops n [xr v "rd", xr v "rs1", xr v "rs2"]
@@ -311,7 +296,7 @@ rv32mEntries =
               , ("mulhu", E3 M.mulhu), ("div", E3 M.div), ("divu", E3 M.divu)
               , ("rem", E3 M.rem), ("remu", E3 M.remu) ] ]
 
--- | Every encoder exported by RISCV.RV32_Xcheri
+-- | Encoders exported by RISCV.RV32_Xcheri
 xcheriEntries :: [Entry]
 xcheriEntries =
      [ ent n e ["rd", "cs1"] xcheri $ \v -> ops n [xr v "rd", xr v "cs1"]
@@ -342,138 +327,116 @@ xcheriEntries =
      , ent "clc"        (E3 X.clc)        ["cd", "cs1", "imm"] xcheri $ \v -> ops "clc" [xr v "cd", mem (xr v "cs1") (sg 12 v "imm")]
      , ent "csc"        (E3 X.csc)        ["cs2", "cs1", "imm"] xcheri $ \v -> ops "csc" [xr v "cs2", mem (xr v "cs1") (sg 12 v "imm")] ]
 
-groups :: [(String, [Entry])]
-groups = [ ("RV_C", rvcEntries), ("RV32_I", rv32iEntries)
-         , ("RV32_M", rv32mEntries), ("RV32_Xcheri", xcheriEntries) ]
+entries :: [Entry]
+entries = rvcEntries ++ rv32iEntries ++ rv32mEntries ++ xcheriEntries
 
 -- * Static check
 
--- | The format and the argument list, from running the encoder on its own
---   parameter indices 0, 1, ...
-probeIndices :: Enc -> Probe
-probeIndices enc = runEnc enc (map fromIntegral [0 .. arity enc - 1])
-
-staticCheck :: Entry -> [String]
-staticCheck e = case eEnc e of
-  E0 _ -> [ eName e ++ ": the test table lists parameters for a nullary encoder"
-          | not (null (eParams e)) ]
-  enc ->
-    let n = arity enc
-        Probe fmt args = probeIndices enc
-        fs = fields fmt
-        ps = eParams e
-        pname i = if i >= 0 && i < length ps then ps !! i else "?"
-        param i = printf "parameter %d (%s)" (i + 1) (pname i) :: String
-        hdr = printf "%s: format \"%s\", fields %s" (eName e) fmt (show fs) :: String
-        arityErr = [ printf "  the test table names %d parameter(s) %s for an encoder of arity %d"
-                            (length ps) (show ps) n
-                   | length ps /= n ]
-        namesErr = [ printf "  the test table's parameter names %s are not the format's fields"
-                            (show ps)
-                   | null arityErr, sort ps /= sort fs ]
-        countErr = [ printf "  the encoder passes %d argument(s) to encode, the format has %d field(s): %s"
-                            (length args) (length fs)
-                            (intercalate ", " (map (param . fromInteger) args))
-                   | length args /= length fs ]
-        routeErr = [ printf "  field %s receives %s, expected %s" f (param a') want
-                   | null (arityErr ++ namesErr)
-                   , (f, a) <- zip fs args
-                   , let a' = fromInteger a
-                   , let wantIdx = elemIndex f ps
-                   , wantIdx /= Just a'
-                   , let want = maybe "no parameter" param wantIdx ]
-        errs = arityErr ++ namesErr ++ countErr ++ routeErr
-    in  [ unlines (hdr : errs) | not (null errs) ]
+-- | The encoder must pass one argument per field, routing parameter k to the
+--   field the table names for it. Returns the errors, or the format string.
+staticCheck :: Entry -> Either String String
+staticCheck e@Entry{ eEnc = E0 _ }
+  | null (eParams e) = Right ""  -- a nullary encoder has no format to probe
+  | otherwise        = Left (eName e ++ ": the test table names parameters for a nullary encoder\n")
+staticCheck e =
+  let ec = eEnc e
+      n  = arity ec
+      Probe fmt args = runEnc ec (map fromIntegral [0 .. n - 1])
+      fs = fields fmt
+      ps = eParams e
+      pname i = if i >= 0 && i < length ps then ps !! i else "?"
+      param i = printf "parameter %d (%s)" (i + 1) (pname i) :: String
+      hdr = printf "%s: format \"%s\", fields %s" (eName e) fmt (show fs) :: String
+      arityErr = [ printf "  the test table names %d parameter(s) %s for an encoder of arity %d"
+                          (length ps) (show ps) n
+                 | length ps /= n ]
+      namesErr = [ printf "  the test table's parameter names %s are not the format's fields"
+                          (show ps)
+                 | null arityErr, sort ps /= sort fs ]
+      countErr = [ printf "  the encoder passes %d argument(s) to encode, the format has %d field(s): %s"
+                          (length args) (length fs)
+                          (intercalate ", " (map (param . fromInteger) args))
+                 | length args /= length fs ]
+      routeErr = [ printf "  field %s receives %s, expected %s" f (param a') want
+                 | null (arityErr ++ namesErr)
+                 , (f, a) <- zip fs args
+                 , let a' = fromInteger a
+                 , let wantIdx = elemIndex f ps
+                 , wantIdx /= Just a'
+                 , let want = maybe "no parameter" param wantIdx ]
+      errs = arityErr ++ namesErr ++ countErr ++ routeErr
+  in  if null errs then Right fmt else Left (unlines (hdr : errs))
 
 -- * Random check
 
--- | Can the random check run? The parameter names must be the format's
---   fields, and the encoder must supply every field.
-randomOk :: Entry -> Maybe String
-randomOk e = case eEnc e of
-  E0 _ -> Nothing
-  enc  -> let Probe fmt args = probeIndices enc
-              fs = fields fmt
-          in  if   length (eParams e) == arity enc
-                && sort (eParams e) == sort fs
-                && length args >= length fs
-              then Just fmt
-              else Nothing
-
-genArgs :: Entry -> String -> Gen [Integer]
-genArgs e fmt = mapM gen1 ps `suchThat` ok
+-- | Values for the parameters, masked to their fields by 'mkEnv'. A bounded
+--   retry, so that an 'assuming' no value can meet fails instead of hanging.
+genArgs :: Entry -> String -> Gen (Maybe [Integer])
+genArgs e fmt = draw (1000 :: Int)
   where
-    ps = eParams e
-    m = fieldMask fmt
-    gen1 p = choose (0, bit (topBit (m p) + 1) - 1)
-    topBit x = last [i | i <- [0 .. 63], testBit x i]
-    ok vs = let env = mkEnv e fmt vs
-            in  all valid env && distinct vs && eAssume e env
+    draw 0 = return Nothing
+    draw k = do
+      vs <- mapM (\p -> choose (0, fieldMask fmt p)) (eParams e)
+      if ok vs then return (Just vs) else draw (k - 1)
+    ok vs = let env = mkEnv e fmt vs in all valid env && eAssume e env
     valid (p, v) =  (not ("nz" `isInfixOf` p) || v /= 0)
                  && (not ("n2" `isInfixOf` p) || v /= 2)
-    -- Whichever parameter lands in a field, the field's value identifies it
-    distinct vs = and [ (vj .&. m p) /= (vi .&. m p)
-                      | (p, vi) <- zip ps vs, (q, vj) <- zip ps vs, p /= q ]
 
 mkEnv :: Entry -> String -> [Integer] -> Env
 mkEnv e fmt vs = [ (p, v .&. fieldMask fmt p) | (p, v) <- zip (eParams e) vs ]
 
 prop_entry :: Entry -> String -> Property
-prop_entry e fmt = forAll (genArgs e fmt) $ \vs ->
-  let pr@(Probe _ args) = runEnc (eEnc e) vs
-      i = probeInstr pr
-      enc32 = unMkInstruction i
-      env = mkEnv e fmt vs
-      fs = fields fmt
-      hdr = printf "%s %s\n  format:   \"%s\"\n  encoding: 0x%08x\n"
-                   (eName e) (unwords [p ++ "=" ++ show v | (p, v) <- zip (eParams e) vs])
-                   fmt enc32 :: String
-      -- (a) InstrCodec: the format decodes to what encode was given
-      sent    = [ a .&. fieldMask fmt f | (f, a) <- zip fs args ]
-      decoded = map fromBitList (rhsArgs (fmtWidth fmt # enc32) (InstrCodec.tag (tokenise fmt)))
-      codecP  = counterexample
-                  (hdr ++ printf "  InstrCodec: fields %s decode as %s, encode was given %s"
-                                 (show fs) (show decoded) (show sent))
-                  (decoded == sent)
-      -- (b) the module's disassembly table
-      disP = case eTable e of
-        Nothing -> property True
-        Just (tname, tbl) ->
-          let want = eExpect e env
-              got  = decode 32 i tbl
-          in  counterexample
-                (hdr ++ printf "  disassembly (%s)\n    expected: %s\n    got:      %s"
-                               tname want (maybe "no match" id got))
-                (got == Just want)
-      -- (c) rv_extract, where the instruction has an entry
-      extractP = case rv_extract i of
-        (_, Nothing, Nothing, Nothing, _) -> property True
-        (_, rs2, rs1, rd, reenc) ->
-          let look ns = listToMaybe [v | (p, v) <- env, p `elem` ns]
-              want = (look ["rs2", "cs2"], look ["rs1", "cs1"], look ["rd", "cd"])
-              i' = reenc (fromMaybe 0 rs2) (fromMaybe 0 rs1) (fromMaybe 0 rd)
-          in       counterexample
-                     (hdr ++ printf "  rv_extract (rs2, rs1, rd) = %s, expected %s"
-                                    (show (rs2, rs1, rd)) (show want))
-                     ((rs2, rs1, rd) == want)
-              .&&. counterexample
-                     (hdr ++ printf "  rv_extract re-encodes as 0x%08x" (unMkInstruction i'))
-                     (i' == i)
-  in  codecP .&&. disP .&&. extractP
-
--- | Nullary encoders: one deterministic disassembly check
-nullaryCheck :: Entry -> [String]
-nullaryCheck e = case (eEnc e, eTable e) of
-  (E0 i, Just (tname, tbl)) ->
-    let want = eExpect e []
-        got  = decode 32 i tbl
-    in  [ printf "%s: encoding 0x%08x\n  disassembly (%s)\n    expected: %s\n    got:      %s\n"
-                 (eName e) (unMkInstruction i) tname want (maybe "no match" id got)
-        | got /= Just want ]
-  _ -> []
+prop_entry e fmt = forAllShow (genArgs e fmt) (maybe "no values" show) $ \mvs -> case mvs of
+  Nothing -> counterexample (eName e ++ ": no values satisfy the field constraints and 'assuming'") False
+  Just vs ->
+    let i   = instrOf (eEnc e) vs
+        env = mkEnv e fmt vs
+        hdr = printf "%s %s\n  format:   \"%s\"\n  encoding: 0x%08x\n"
+                     (eName e) (unwords [p ++ "=" ++ show v | (p, v) <- zip (eParams e) vs])
+                     fmt (unMkInstruction i) :: String
+        disP = case eDis e of
+          Nothing -> property True
+          Just ((tname, tbl), expect) ->
+            let want = expect env
+                got  = decode 32 i tbl
+            in  counterexample
+                  (hdr ++ printf "  disassembly (%s)\n    expected: %s\n    got:      %s"
+                                 tname want (maybe "no match" id got))
+                  (got == Just want)
+        look ns = listToMaybe [v | (p, v) <- env, p `elem` ns]
+        want = (look ["rs2", "cs2"], look ["rs1", "cs1"], look ["rd", "cd"])
+        regFields = [p | p <- eParams e, p `elem` ["rs2", "cs2", "rs1", "cs1", "rd", "cd"]]
+        keep = complement (encodingMask fmt regFields)
+        -- every 32-bit instruction with registers must be in rv_extract
+        extractP
+          | sum (map tokenWidth (tokenise fmt)) /= 32 || null regFields = property True
+          | otherwise = case rv_extract i of
+              (_, rs2, rs1, rd, reenc) ->
+                let i'   = reenc (fromMaybe 0 rs2) (fromMaybe 0 rs1) (fromMaybe 0 rd)
+                    regs = choose (0, 31) :: Gen Integer
+                in       counterexample
+                           (hdr ++ printf "  rv_extract (rs2, rs1, rd) = %s, expected %s"
+                                          (show (rs2, rs1, rd)) (show want))
+                           ((rs2, rs1, rd) == want)
+                    .&&. counterexample
+                           (hdr ++ printf "  rv_extract re-encodes as 0x%08x" (unMkInstruction i'))
+                           (i' == i)
+                    -- bypassShrink re-encodes with other registers: they must land in the
+                    -- register fields, and no other bit may change
+                    .&&. forAll ((,,) <$> regs <*> regs <*> regs) (\(a, b, c) ->
+                           let i2 = reenc a b c
+                               (_, rs2', rs1', rd', _) = rv_extract i2
+                               slot old new = new <$ old
+                           in  counterexample
+                                 (hdr ++ printf "  re-encoding with (rs2, rs1, rd) = %s gives 0x%08x, extracted as %s"
+                                                (show (a, b, c)) (unMkInstruction i2) (show (rs2', rs1', rd')))
+                                 (    (rs2', rs1', rd') == (slot rs2 a, slot rs1 b, slot rd c)
+                                   && unMkInstruction i2 .&. keep == unMkInstruction i .&. keep))
+    in  disP .&&. extractP
 
 -- | rv_pretty: CHERI clc/csc share their encodings with RV64 ld/sd. With no ixl (Show, saved
--- reproducers) or an RV32 trace they must print as clc/csc; only an RV64 trace (ixl 2) gives ld/sd.
+-- reproducers) or an RV32 trace they must print as clc/csc; only an RV64 trace (ixl 2) gives
+-- ld/sd. Only the mnemonic is compared: the operands are the disassembly check's job.
 prettyChecks :: [String]
 prettyChecks =
   [ printf "rv_pretty %s (ixl %s): expected %s, got \"%s\"\n" n (show ixl) want got
@@ -486,21 +449,14 @@ prettyChecks =
 
 main :: IO ()
 main = do
-  let entries = concatMap snd groups
-      static  = concatMap staticCheck entries ++ concatMap nullaryCheck entries ++ prettyChecks
-  mapM_ putStr static
-  failures <- forM entries $ \e -> case randomOk e of
-    Nothing  -> return 0
-    Just fmt -> do
-      r <- quickCheckWithResult stdArgs { maxSuccess = 200, chatty = False }
-                                (prop_entry e fmt)
-      if isSuccess r then return (0 :: Int)
-                     else putStrLn (output r) >> return 1
-  let nRandom = length [() | e <- entries, Just _ <- [randomOk e]]
-  printf "CodecCheck: %d encoders (%s); %d with random round-trip checks\n"
-         (length entries)
-         (intercalate ", " [printf "%s %d" g (length es) | (g, es) <- groups] :: String)
-         nRandom
-  printf "CodecCheck: %d static failure(s), %d random-check failure(s)\n"
-         (length static) (sum failures)
-  unless (null static && sum failures == 0) exitFailure
+  let checked    = [ (e, staticCheck e) | e <- entries ]
+      staticErrs = [ err | (_, Left err) <- checked ] ++ prettyChecks
+  mapM_ putStr staticErrs
+  failed <- flip filterM [ (e, fmt) | (e, Right fmt) <- checked ] $ \(e, fmt) -> do
+    let runs = if arity (eEnc e) == 0 then 1 else 200
+    r <- quickCheckWithResult stdArgs { maxSuccess = runs, chatty = False } (prop_entry e fmt)
+    unless (isSuccess r) (putStrLn (output r))
+    return (not (isSuccess r))
+  printf "CodecCheck: %d encoders, %d static/rv_pretty failure(s), %d random-check failure(s)\n"
+         (length entries) (length staticErrs) (length failed)
+  unless (null staticErrs && null failed) exitFailure
