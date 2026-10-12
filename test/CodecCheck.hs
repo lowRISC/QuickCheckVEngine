@@ -242,7 +242,7 @@ rvcEntries =
   , ent "c_bnez"         (E2 C.c_bnez)         ["rs1'", "imm"]        rv32c  $ \v -> ops "c.bnez" [cr v "rs1'", sg 9 v "imm"]
   -- Quadrant 2
   , ent "c_slli64"       (E1 C.c_slli64)       ["rs1_rd_nz"]           rv128c $ \v -> ops "c.slli64"      [xr v "rs1_rd_nz"]
-  , ent "c_slli64_hint0" (E0 C.c_slli64_hint0) []                      rv32c  $ \_ -> "c.slli64.hint x0" -- matches c_slli64_raw first
+  , ent "c_slli64_hint0" (E0 C.c_slli64_hint0) []                      rv32c  $ \_ -> "c.slli64.hint"
   , ent "c_slli64_hintx" (E1 C.c_slli64_hintx) ["rs1_rd_nz"]           rv32c  $ \v -> ops "c.slli64.hint" [xr v "rs1_rd_nz"]
   , ent "c_slli"         (E2 C.c_slli)         ["rs1_rd_nz", "nzuimm"] rv32c  $ \v -> ops "c.slli"        [xr v "rs1_rd_nz", un v "nzuimm"]
   , assuming (\v -> not (testBit (val v "nzuimm") 5)) $ -- shamt[5] set is c.slli.nse x0 on RV32
