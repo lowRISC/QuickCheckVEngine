@@ -296,7 +296,7 @@ rv32iEntries =
   ++ [ ent n e ["rs1", "rs2", "imm"] rv32i $ \v -> ops n [xr v "rs2", mem (xr v "rs1") (sg 12 v "imm")]
      | (n, e) <- [("sb", E3 I.sb), ("sh", E3 I.sh), ("sw", E3 I.sw)] ]
   ++ [ ent "fence"  (E2 I.fence)  ["pred", "succ"] rv32i $ \v -> ops "fence" [un v "pred", un v "succ"]
-     , ent "sfence" (E2 I.sfence) ["rs1", "rs2"]   rv32i $ \v -> ops "sfence.vma" [un v "rs1", un v "rs2"]
+     , ent "sfence" (E2 I.sfence) ["rs1", "rs2"]   rv32i $ \v -> ops "sfence.vma" [xr v "rs1", xr v "rs2"]
      , ent "fence_tso" (E0 I.fence_tso) [] rv32i $ \_ -> "fence.tso"
      , ent "resrvd"    (E0 I.resrvd)    [] rv32i $ \_ -> "reserved"
      , ent "mret"      (E0 I.mret)      [] rv32i $ \_ -> "mret"
