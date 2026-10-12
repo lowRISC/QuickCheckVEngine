@@ -287,6 +287,10 @@ allTests = [
            , ("capmisc",    "Xcheri Extension Capability Miscellaneous Verification", has_cheri,                                T.repeatTillEnd genCHERImisc)
            , ("capcontrol", "Xcheri Extension Capability Control Flow Verification",  has_cheri,                                T.repeatTillEnd genCHERIcontrol)
            , ("capcache",   "Xcheri Extension Cache Verification",                    has_cheri,                                T.repeatTillEnd gen_rv32_Xcheri_cache)
+             -- has_cheri, not has_icsr: CHERIoT arch strings (e.g. rv32emcZifencei_Xcheriot) name no
+             -- Zicsr. Which CSRs are reached is decided by --csr-include-regex/--csr-exclude-regex
+             -- (guardCSR), as for the csrr in randomCHERITest.
+           , ("capcsr",     "CHERIoT Counter CSR ASR Permission Verification",        has_cheri,                                T.repeatTillEnd genCHERIoTCounterCSR)
            , ("capcache64", "RV64 Xcheri Extension Cache Verification",               andPs [has_cheri, has_xlen_64],           T.repeatTillEnd gen_rv64_Xcheri_cache)
            , ("capdecode",  "Xcheri Extension Capability Decode Template",            has_cheri,                                T.repeatTillEnd capDecodeTest)
            , ("cloadtags",  "Xcheri Extension CLoadTags Template",                    andPs [has_cheri, not . has_nocloadtags], T.repeatTillEnd cLoadTagsTest)

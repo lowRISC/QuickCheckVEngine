@@ -42,7 +42,8 @@ module QuickCheckVEngine.Templates.GenCHERI (
   genCHERIinspection,
   genCHERIarithmetic,
   genCHERImisc,
-  genCHERIcontrol
+  genCHERIcontrol,
+  genCHERIoTCounterCSR
 ) where
 
 import Test.QuickCheck
@@ -237,3 +238,33 @@ genCHERIcontrol = random $ do
   return $ dist [ -- (2, instUniform $ rv32_xcheri_control srcAddr srcData dest) -- CHERIoT lacks cinvoke and jalr_cap (jalr.cap) instr
                   (1, inst (csetbounds dest srcData srcAddr))
                 , (2, instUniform $ rv32_i srcAddr srcData dest imm longImm fenceOp1 fenceOp2) ] -- TODO add csr
+
+-- | Exercise the counter CSRs that CHERIoT permits without the ASR permission.
+--   ext_check_CSR() in cheri_addr_checks.sail admits *reads* of mcycle (0xB00),
+--   minstret (0xB02), mcycleh (0xB80), minstreth (0xB82) and the unprivileged
+--   cycle/time/instret(h) shadows while PCC lacks ASR, but requires ASR for any
+--   write.  Reads and writes are mixed with clearASR, so both halves of that
+--   rule are reached.  clearASR writes PCC without ASR to mtcc and then jumps to
+--   the null capability, so it traps into that mtcc; ASR does not come back
+--   within a test, and only the accesses before the first clearASR have it.
+--
+--   No other template reaches these: allowedCsrsRO in randomCHERITest holds
+--   only mcause, and the other genCHERI* templates leave CSRs as "TODO add csr".
+--   That gap let an ibex_decoder safe-list covering just 0xC00-0xC9F -- omitting
+--   the four 0xB counters -- go unnoticed until CHERIoT RTOS hung on csrr mcycle.
+genCHERIoTCounterCSR :: Template
+genCHERIoTCounterCSR = random $ do
+  srcData    <- src
+  -- clearASR writes mtcc from tmpReg masked by tmpReg2: with x0 or the same register for both,
+  -- mtcc gets a null, untagged or permissionless capability and every later trap fetches from it
+  tmpReg     <- src `suchThat` (/= 0)
+  tmpReg2    <- src `suchThat` (\r -> r /= 0 && r /= tmpReg)
+  dest       <- dest
+  counterCsr <- elements $ map unsafe_csrs_indexFromName
+                  [ "mcycle", "minstret", "mcycleh", "minstreth"
+                  , "cycle",  "time",     "instret"
+                  , "cycleh", "timeh",    "instreth" ]
+  return $ dist [ (10, csrr dest counterCsr)
+                , (10, csrw counterCsr srcData)
+                , (10, mconcat [ clearASR tmpReg tmpReg2, csrr dest counterCsr ])
+                , (10, mconcat [ clearASR tmpReg tmpReg2, csrw counterCsr srcData ]) ]
