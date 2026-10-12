@@ -109,7 +109,7 @@ rv_extract :: Instruction -> ExtractedRegs
 rv_extract instr = case decode 32 instr extractList of
   Nothing -> (False, Nothing, Nothing, Nothing, (\a b c -> instr))
   Just i -> i
-  where extractList = rv32_i_extract ++ rv32_xcheri_extract
+  where extractList = rv32_i_extract ++ rv32_m_extract ++ rv32_xcheri_extract
 
 rv_shrink :: Instruction -> [Instruction]
 rv_shrink instr = case decode 32 instr shrinkList of

@@ -292,6 +292,9 @@ extract_uimm instr uimm rd = (False, Nothing, Nothing, Just rd, \x y z -> encode
 extract_nodst :: String -> Integer -> Integer -> Integer -> ExtractedRegs
 extract_nodst instr imm rs2 rs1 = (False, Just rs2, Just rs1, Nothing, \x y z -> encode instr imm x y)
 
+extract_sfence :: Integer -> Integer -> ExtractedRegs
+extract_sfence rs2 rs1 = (False, Just rs2, Just rs1, Nothing, \x y z -> encode sfence_raw x y)
+
 rv32_i_extract :: [DecodeBranch ExtractedRegs]
 rv32_i_extract = [ add_raw    --> extract_2op add_raw
                  , slt_raw    --> extract_2op slt_raw
@@ -330,6 +333,7 @@ rv32_i_extract = [ add_raw    --> extract_2op add_raw
                  , sb_raw     --> extract_nodst sb_raw
                  , sh_raw     --> extract_nodst sh_raw
                  , sw_raw     --> extract_nodst sw_raw
+                 , sfence_raw --> extract_sfence
 --               , fence_raw  --> noextract
 --               , fence_tso_raw --> noextract
 --               , resrvd_raw --> noextract
