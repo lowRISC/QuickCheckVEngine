@@ -411,10 +411,14 @@ prop_entry e fmt = forAllShow (genArgs e fmt) (maybe "no values" show) $ \mvs ->
         extractP
           | sum (map tokenWidth (tokenise fmt)) /= 32 || null regFields = property True
           | otherwise = case rv_extract i of
-              (_, rs2, rs1, rd, reenc) ->
+              (bypass, rs2, rs1, rd, reenc) ->
                 let i'   = reenc (fromMaybe 0 rs2) (fromMaybe 0 rs1) (fromMaybe 0 rd)
                     regs = choose (0, 31) :: Gen Integer
                 in       counterexample
+                           (hdr ++ printf "  rv_extract bypass flag = %s, expected %s"
+                                          (show bypass) (show (bypassExpected (eName e) env)))
+                           (bypass == bypassExpected (eName e) env)
+                    .&&. counterexample
                            (hdr ++ printf "  rv_extract (rs2, rs1, rd) = %s, expected %s"
                                           (show (rs2, rs1, rd)) (show want))
                            ((rs2, rs1, rd) == want)
@@ -445,18 +449,36 @@ prettyChecks =
   , let got = rv_pretty i ixl
   , takeWhile (/= ' ') got /= want ]
 
+-- | rv_extract's bypass flag, which makes bypassShrink replace the instruction by a move: set
+-- only for the plain register moves, cmove and addi with immediate 0.
+bypassExpected :: String -> Env -> Bool
+bypassExpected n v = n == "cmove" || (n == "addi" && val v "imm" == 0)
+
+-- | Cases the random values almost never reach: addi with immediate 0 (the bypass), and the
+-- c.slli64.hint (rd == 0) entry in the RV64 and RV128 tables (the entries check RV32 only).
+fixedChecks :: [String]
+fixedChecks =
+     [ printf "rv_extract (addi x%d, x%d, 0): bypass flag False, expected True\n" rd rs1
+     | (rd, rs1) <- [(1, 2), (0, 0), (31, 17)] :: [(Integer, Integer)]
+     , let (bypass, _, _, _, _) = rv_extract (I.addi rd rs1 0)
+     , not bypass ]
+  ++ [ printf "%s: c_slli64_hint0 disassembles as %s, expected c.slli64.hint\n" tname (show got)
+     | (tname, tbl) <- [rv64c, rv128c]
+     , let got = decode 32 (C.c_slli64_hint0 :: Instruction) tbl
+     , got /= Just "c.slli64.hint" ]
+
 -- * Driver
 
 main :: IO ()
 main = do
   let checked    = [ (e, staticCheck e) | e <- entries ]
-      staticErrs = [ err | (_, Left err) <- checked ] ++ prettyChecks
+      staticErrs = [ err | (_, Left err) <- checked ] ++ prettyChecks ++ fixedChecks
   mapM_ putStr staticErrs
   failed <- flip filterM [ (e, fmt) | (e, Right fmt) <- checked ] $ \(e, fmt) -> do
     let runs = if arity (eEnc e) == 0 then 1 else 200
     r <- quickCheckWithResult stdArgs { maxSuccess = runs, chatty = False } (prop_entry e fmt)
     unless (isSuccess r) (putStrLn (output r))
     return (not (isSuccess r))
-  printf "CodecCheck: %d encoders, %d static/rv_pretty failure(s), %d random-check failure(s)\n"
+  printf "CodecCheck: %d encoders, %d static/fixed-case failure(s), %d random-check failure(s)\n"
          (length entries) (length staticErrs) (length failed)
   unless (null staticErrs && null failed) exitFailure

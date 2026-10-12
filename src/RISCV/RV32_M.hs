@@ -81,9 +81,15 @@ remu rd rs1 rs2   = encode remu_raw            rs2      rs1          rd
 
 -- | Register extraction for rv_extract (all R-type)
 rv32_m_extract :: [DecodeBranch ExtractedRegs]
-rv32_m_extract = [ r --> extract_2op r
-                 | r <- [ mul_raw, mulh_raw, mulhsu_raw, mulhu_raw
-                        , div_raw, divu_raw, rem_raw, remu_raw ] ]
+rv32_m_extract = [ mul_raw    --> extract_2op mul_raw
+                 , mulh_raw   --> extract_2op mulh_raw
+                 , mulhsu_raw --> extract_2op mulhsu_raw
+                 , mulhu_raw  --> extract_2op mulhu_raw
+                 , div_raw    --> extract_2op div_raw
+                 , divu_raw   --> extract_2op divu_raw
+                 , rem_raw    --> extract_2op rem_raw
+                 , remu_raw   --> extract_2op remu_raw
+                  ]
 
 -- | Dissassembly of RV32 multiply/divide instructions
 rv32_m_disass :: [DecodeBranch String]
