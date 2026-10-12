@@ -1,13 +1,15 @@
+cabal-version:       2.4
 name:                QCVEngine
 version:             0.1.0.0
 build-type:          Simple
 extra-source-files:  README.md
-cabal-version:       >=1.10
 
-executable QCVEngine
+-- Everything but Main, shared by the executable and the CodecCheck test suite. A named
+-- (internal) library, so that the target QCVEngine still means only the executable
+-- (cabal list-bin QCVEngine in TestRIG's Makefile).
+library qcvengine-lib
   hs-source-dirs:      src
-  main-is:             QuickCheckVEngine/Main.hs
-  other-modules:       InstrCodec,
+  exposed-modules:     InstrCodec,
                        RISCV,
                        RISCV.Helpers,
                        RISCV.ArchDesc,
@@ -74,31 +76,24 @@ executable QCVEngine
                        directory >= 1.3.8.5
   default-language:    Haskell2010
 
+-- hs-source-dirs is Main's own directory, not src, so the other modules come from the library
+-- instead of being compiled into the executable a second time.
+executable QCVEngine
+  hs-source-dirs:      src/QuickCheckVEngine
+  main-is:             Main.hs
+  build-depends:       qcvengine-lib,
+                       base >=4.9, time, network >=2.8, bytestring >=0.10,
+                       filemanip >=0.3, QuickCheck >= 2.12 && < 2.15,
+                       regex-tdfa >= 1.3, containers >= 0.6.5.1,
+                       cereal >= 0.5.8.3, temporary >= 1.3, directory >= 1.3.8.5
+  default-language:    Haskell2010
+
 -- Encoder/decoder self-check of the RISC-V instruction descriptions:
 -- cabal test CodecCheck
 test-suite CodecCheck
   type:                exitcode-stdio-1.0
-  hs-source-dirs:      test, src
+  hs-source-dirs:      test
   main-is:             CodecCheck.hs
-  other-modules:       InstrCodec,
-                       RISCV.Helpers,
-                       RISCV.ArchDesc,
-                       RISCV.InstInspect,
-                       RISCV.RV32_I,
-                       RISCV.RV32_M,
-                       RISCV.RV32_A,
-                       RISCV.RV32_F,
-                       RISCV.RV32_D,
-                       RISCV.RV32_Zifencei,
-                       RISCV.RV32_Zicsr,
-                       RISCV.RV32_Xcheri,
-                       RISCV.RV64_I,
-                       RISCV.RV64_M,
-                       RISCV.RV64_A,
-                       RISCV.RV64_F,
-                       RISCV.RV64_D,
-                       RISCV.RV_C,
-                       RISCV.RV_CSRs
-  build-depends:       base >=4.9, split >=0.2, regex-posix >=0.95,
-                       QuickCheck >= 2.12 && < 2.15
+  build-depends:       qcvengine-lib,
+                       base >=4.9, QuickCheck >= 2.12 && < 2.15
   default-language:    Haskell2010
