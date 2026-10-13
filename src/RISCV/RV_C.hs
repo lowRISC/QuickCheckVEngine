@@ -336,6 +336,7 @@ rv_c_32_disass = [ pad c_fld_raw          --> prettyCL_F "c.fld"
                  , pad c_addw_raw         --> prettyCA "c.addw.res"
 
                  , pad c_slli_nse_raw     --> prettyCI_swap "c.slli.nse"
+                 , pad c_slli64_hint0_raw --> "c.slli64.hint" -- before c_slli64_raw, which also matches rd == 0
                  , pad c_slli64_raw       --> prettyCI_reg "c.slli64.hint"
                  , pad c_fldsp_raw        --> prettyCI_F "c.fldsp"
                  , pad c_flwsp_raw        --> prettyCI_F "c.flwsp"
@@ -357,6 +358,7 @@ rv_c_64_disass = [ pad c_fld_raw          --> prettyCL_F "c.fld"
                  , pad c_subw_raw         --> prettyCA "c.subw"
                  , pad c_addw_raw         --> prettyCA "c.addw"
 
+                 , pad c_slli64_hint0_raw --> "c.slli64.hint" -- before c_slli64_raw, which also matches rd == 0
                  , pad c_slli64_raw       --> prettyCI_reg "c.slli64.hint"
                  , pad c_ldsp_res_raw     --> prettyCI_imm  "c.ldsp.res"
                  , pad c_ldsp_raw         --> prettyCI      "c.ldsp"
@@ -378,6 +380,7 @@ rv_c_128_disass = [ pad c_lq_raw           --> prettyCL   "c.lq"
                   , pad c_subw_raw         --> prettyCA "c.subw"
                   , pad c_addw_raw         --> prettyCA "c.addw"
 
+                  , pad c_slli64_hint0_raw --> "c.slli64.hint" -- before c_slli64_raw, which also matches rd == 0
                   , pad c_slli64_raw       --> prettyCI_reg "c.slli64"
                   , pad c_lqsp_res_raw     --> prettyCI_imm "c.lqsp.res"
                   , pad c_lqsp_raw         --> prettyCI     "c.lqsp"
@@ -407,6 +410,7 @@ rv_c_multi_disass = [ pad c_lq_raw           --> prettyIgnr3 "c.fld (RV32DC/RV64
                     , pad c_addw_raw         --> prettyCA "c.addw.res (RV32C) / c.addw (RV64C/RV128C)"
 
                     , pad c_slli_nse_raw     --> prettyIgnr2 "c.slli.nse (RV32C) / c.slli (RV64C/RV128C)"
+                    , pad c_slli64_hint0_raw --> "c.slli64.hint" -- before c_slli64_raw, which also matches rd == 0
                     , pad c_slli64_raw       --> prettyCI_reg "c.slli64.hint (RV32C/RV64C) / c.slli64 (RV128C)"
                     , pad c_lqsp_res_raw     --> prettyIgnr1 "c.fldsp (RV32DC/RV64DC) / c.lqsp.res (RV128C)"
                     , pad c_lqsp_raw         --> prettyIgnr2 "c.fldsp (RV32DC/RV64DC) / c.lqsp (RV128C)"
@@ -451,7 +455,6 @@ rv_c_common_disass = [ pad c_illegal_raw      --> "c.illegal"
                      , pad c_beqz_raw         --> prettyCB_sig 9 "c.beqz"
                      , pad c_bnez_raw         --> prettyCB_sig 9 "c.bnez"
 
-                     , pad c_slli64_hint0_raw --> "c.slli64.hint"
                      , pad c_slli_hint_raw    --> prettyCI_imm "c.slli.hint"
                      , pad c_slli_raw         --> prettyCI_swap "c.slli"
                      , pad c_lwsp_res_raw     --> prettyCI_imm  "c.lwsp.res"

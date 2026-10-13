@@ -2,9 +2,9 @@ name: Haskell CI
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "master", "cheriot-rebase" ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ "master", "cheriot-rebase" ]
 
 permissions:
   contents: read
@@ -29,10 +29,12 @@ jobs:
       - uses: haskell-actions/setup@v2
         with:
           ghc-version: '9.8'
-          cabal-version: '3.8'
+          cabal-version: '3.12'
       - name: Install dependencies
         run: |
           cabal update
-          cabal build --only-dependencies
+          cabal build --only-dependencies --enable-tests all
       - name: Build
-        run: cabal build all
+        run: cabal build --enable-tests all
+      - name: Codec self-check
+        run: cabal test --test-show-details=direct CodecCheck

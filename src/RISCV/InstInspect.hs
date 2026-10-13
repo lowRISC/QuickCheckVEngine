@@ -80,27 +80,15 @@ rv_pretty instr ixl = case decode 32 instr instList of
   Just i -> i
   where -- RV64 ld/sd share their encodings with CHERI clc/csc, so the first table to match wins.
         -- Decode as RV64 only when the trace says RV64 (ixl 2); otherwise (RV32, or no ixl, as
-        -- in Show) the RV32 and Xcheri tables come first.
-        instList | ixl == Just 2 =    rv32_i_disass ++ rv64_i_disass
-                                   ++ rv32_m_disass ++ rv64_m_disass
-                                   ++ rv32_a_disass ++ rv64_a_disass
-                                   ++ rv32_f_disass ++ rv64_f_disass
-                                   ++ rv32_d_disass ++ rv64_d_disass
-                                   ++ rv32_zicsr_disass
-                                   ++ rv32_zifencei_disass
-                                   ++ rv32_xcheri_disass
-                                   ++ rv_c_disass ixl
-                 | otherwise   =    rv32_i_disass
-                                   ++ rv32_m_disass
-                                   ++ rv32_a_disass
-                                   ++ rv32_f_disass
-                                   ++ rv32_d_disass
-                                   ++ rv32_zicsr_disass
-                                   ++ rv32_zifencei_disass
-                                   ++ rv32_xcheri_disass
-                                   ++ rv_c_disass ixl
-                                   ++ rv64_i_disass ++ rv64_m_disass ++ rv64_a_disass
-                                   ++ rv64_f_disass ++ rv64_d_disass
+        -- in Show) the RV32 and Xcheri tables come first and the RV64 tables last.
+        instList | ixl == Just 2 = concat (zipWith (++) rv32 rv64) ++ rest
+                 | otherwise     = concat rv32 ++ rest ++ concat rv64
+        rv32 = [rv32_i_disass, rv32_m_disass, rv32_a_disass, rv32_f_disass, rv32_d_disass]
+        rv64 = [rv64_i_disass, rv64_m_disass, rv64_a_disass, rv64_f_disass, rv64_d_disass]
+        rest =    rv32_zicsr_disass
+               ++ rv32_zifencei_disass
+               ++ rv32_xcheri_disass
+               ++ rv_c_disass ixl
 
 instance Show Instruction where
   show i@(MkInstruction v) = printf ".4byte 0x%08x # %s" v (rv_pretty i Nothing)
@@ -109,7 +97,7 @@ rv_extract :: Instruction -> ExtractedRegs
 rv_extract instr = case decode 32 instr extractList of
   Nothing -> (False, Nothing, Nothing, Nothing, (\a b c -> instr))
   Just i -> i
-  where extractList = rv32_i_extract ++ rv32_xcheri_extract
+  where extractList = rv32_i_extract ++ rv32_m_extract ++ rv32_xcheri_extract
 
 rv_shrink :: Instruction -> [Instruction]
 rv_shrink instr = case decode 32 instr shrinkList of

@@ -111,6 +111,7 @@ module RISCV.RV32_Xcheri (
 -- , amoswap_q -- CHERIoT lacks amoswap_q (amoswap.c/q) atomic instr
 -- * RISC-V CHERI, others
 , rv32_xcheri_disass
+, name_scr
 , rv32_xcheri_extract
 , rv32_xcheri_shrink
 , rv32_xcheri
@@ -355,24 +356,27 @@ pretty_2src instr src2 src1 = concat [instr, " ", reg src1, ", ", reg src2]
 -- | Pretty-print a special capability read/write instruction
 pretty_cspecialrw instr idx cs1 cd =
   concat [instr, " ", reg cd, ", ", name_scr idx, ", ", reg cs1]
-  where name_scr 0 = "pcc"
-        name_scr 1 = "ddc"
-        name_scr 3 = "utidc"
-        name_scr 4 = "utcc"
-        name_scr 5 = "utdc"
-        name_scr 6 = "uscratchc"
-        name_scr 7 = "uepcc"
-        name_scr 11 = "stidc"
-        name_scr 12 = "stcc"
-        name_scr 13 = "stdc"
-        name_scr 14 = "sscratchc"
-        name_scr 15 = "sepcc"
-        name_scr 27 = "mtidc"
-        name_scr 28 = "mtcc"
-        name_scr 29 = "mtdc"
-        name_scr 30 = "mscratchc"
-        name_scr 31 = "mepcc"
-        name_scr idx = int idx
+
+-- | Name of a special capability register (SCR) index
+name_scr :: Integer -> String
+name_scr 0 = "pcc"
+name_scr 1 = "ddc"
+name_scr 3 = "utidc"
+name_scr 4 = "utcc"
+name_scr 5 = "utdc"
+name_scr 6 = "uscratchc"
+name_scr 7 = "uepcc"
+name_scr 11 = "stidc"
+name_scr 12 = "stcc"
+name_scr 13 = "stdc"
+name_scr 14 = "sscratchc"
+name_scr 15 = "sepcc"
+name_scr 27 = "mtidc"
+name_scr 28 = "mtcc"
+name_scr 29 = "mtdc"
+name_scr 30 = "mscratchc"
+name_scr 31 = "mepcc"
+name_scr idx = int idx
 
 -- | Dissassembly of CHERI instructions
 rv32_xcheri_disass :: [DecodeBranch String]

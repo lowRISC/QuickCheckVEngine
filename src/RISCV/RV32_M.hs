@@ -52,12 +52,14 @@ module RISCV.RV32_M (
 , remu
 -- * RV32 multiply/divide, others
 , rv32_m_disass
+, rv32_m_extract
 , rv32_m
 ) where
 
 import Prelude hiding (rem, div)
 
-import RISCV.Helpers (prettyR)
+import RISCV.Helpers (prettyR, ExtractedRegs)
+import RISCV.RV32_I (extract_2op)
 import InstrCodec (DecodeBranch, (-->), encode, Instruction)
 
 mul_raw           =                   "0000001 rs2[4:0] rs1[4:0] 000 rd[4:0] 0110011"
@@ -76,6 +78,18 @@ rem_raw           =                   "0000001 rs2[4:0] rs1[4:0] 110 rd[4:0] 011
 rem rd rs1 rs2    = encode rem_raw             rs2      rs1          rd
 remu_raw          =                   "0000001 rs2[4:0] rs1[4:0] 111 rd[4:0] 0110011"
 remu rd rs1 rs2   = encode remu_raw            rs2      rs1          rd
+
+-- | Register extraction for rv_extract (all R-type)
+rv32_m_extract :: [DecodeBranch ExtractedRegs]
+rv32_m_extract = [ mul_raw    --> extract_2op mul_raw
+                 , mulh_raw   --> extract_2op mulh_raw
+                 , mulhsu_raw --> extract_2op mulhsu_raw
+                 , mulhu_raw  --> extract_2op mulhu_raw
+                 , div_raw    --> extract_2op div_raw
+                 , divu_raw   --> extract_2op divu_raw
+                 , rem_raw    --> extract_2op rem_raw
+                 , remu_raw   --> extract_2op remu_raw
+                  ]
 
 -- | Dissassembly of RV32 multiply/divide instructions
 rv32_m_disass :: [DecodeBranch String]

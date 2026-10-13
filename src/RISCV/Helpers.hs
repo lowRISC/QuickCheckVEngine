@@ -103,7 +103,11 @@ module RISCV.Helpers (
 , prettyIgnr3
 -- * Others
 , reg
+, reg'
+, fpReg
+, fpReg'
 , int
+, toSigned
 , fpRoundingMode
 , PrivMode
 , privString
@@ -295,7 +299,7 @@ prettyF pred succ =
 
 -- | Pretty printer for sfence.vma instructions
 prettySfence rs2 rs1 =
-  concat ["sfence.vma ", int rs1, ", ", int rs2]
+  concat ["sfence.vma ", reg rs1, ", ", reg rs2]
 
 -- | R-type, 2-operand instruction pretty printer
 prettyR_2op instr cs1 cd =
