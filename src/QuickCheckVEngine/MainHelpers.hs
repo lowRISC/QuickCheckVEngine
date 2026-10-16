@@ -258,10 +258,15 @@ doRVFIDII connA m_connB alive statsTmp delay verbosity saveDir test = do
       send "implementation A" connA
       maybe (pure ()) (send "implementation B") m_connB
       -- Receive from implementations
-      let receive name base conn = do res <- timeout delay $ recvRVFITrace conn verbosity base
-                                      when doLog $ putStrLn $ "Done receiving reports from " ++ name
-                                      return res
-      m_traceA <- receive "implementation A" insts connA
+      -- An interrupt request executes nothing, so no report comes back for it (the barrier and
+      -- every instruction do get one).
+      let reportsFor (DII_InterruptRequest _ _) = False
+          reportsFor _                          = True
+      let receive name reports base conn = do
+            res <- timeout delay $ recvRVFITrace reports conn verbosity base
+            when doLog $ putStrLn $ "Done receiving reports from " ++ name
+            return res
+      m_traceA <- receive "implementation A" reportsFor insts connA
       let traceA = fromMaybe (emptyTrace insts) m_traceA
       statsDecode <- Cereal.decode <$> BSStrict.readFile statsTmp
       oldStats <- case statsDecode of
@@ -269,7 +274,8 @@ doRVFIDII connA m_connB alive statsTmp delay verbosity saveDir test = do
                                    return emptyStats
                     Right s  -> return s
       BSStrict.writeFile statsTmp (Cereal.encode (statTrace (snd <$> traceA) oldStats))
-      m_traceAB <- maybe (return . Just $ emptyTrace traceA) (receive "implementation B" traceA) m_connB
+      m_traceAB <- maybe (return . Just $ emptyTrace traceA)
+                         (receive "implementation B" (reportsFor . fst) traceA) m_connB
       --
       when (isNothing m_traceA || isNothing m_traceAB) $ writeIORef alive False
       when (isNothing m_traceA) $ putStrLn "Error: implementation A timeout. Discarding all future tests."

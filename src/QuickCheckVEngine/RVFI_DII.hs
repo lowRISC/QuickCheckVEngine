@@ -82,12 +82,14 @@ recvRVFIPacket (RvfiDiiConnection sock 1 name) verbosity = rvfiReadV1Response ((
 recvRVFIPacket (RvfiDiiConnection sock 2 name) verbosity = rvfiReadV2Response ((recvBlking sock), name, verbosity)
 recvRVFIPacket (RvfiDiiConnection _ vers name) _ = error (name ++ " invalid trace version" ++ show vers)
 
--- | Receive an execution trace (a '[RVFI_Packet]')
-recvRVFITrace :: Traversable t => RvfiDiiConnection -> Int -> t a -> IO (t (a, Maybe RVFI_Packet))
-recvRVFITrace conn verbosity tStruct = do
+-- | Receive an execution trace (a '[RVFI_Packet]'). Only elements for which 'reports' holds get a
+--   packet: an interrupt request executes nothing, so an implementation sends no report for it.
+recvRVFITrace :: Traversable t => (a -> Bool) -> RvfiDiiConnection -> Int -> t a
+              -> IO (t (a, Maybe RVFI_Packet))
+recvRVFITrace reports conn verbosity tStruct = do
   activeRef <- newIORef True
   let recv x = do active <- readIORef activeRef
-                  if active then do
+                  if active && reports x then do
                     rvfiPkt <- recvRVFIPacket conn verbosity
                     when (verbosity > 1) $ putStrLn $ "\t" ++ rvfiShowPacket rvfiPkt verbosity
                     when (rvfiIsHalt rvfiPkt) $ writeIORef activeRef False
