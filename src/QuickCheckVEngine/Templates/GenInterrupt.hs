@@ -140,8 +140,10 @@ data IrqWait = Plain | Two | Wfi | WfiDisabled deriving Eq
 
 -- | One interrupt event.
 --   Plain:       one interrupt, its mie bit set or clear, mstatus.MIE set or clear.
---   Two:         two interrupts raised together, both enabled: the hart and the model must pick
---                the same one.
+--   Two:         two interrupts, both enabled, raised while mstatus.MIE is clear, then MIE set:
+--                the hart takes one with both pending, and the model must pick the same one.
+--                (The lines rise one after the other; with MIE set the hart would take the
+--                first before the second rose, while the model is given both.)
 --   Wfi:         wfi with the interrupt enabled in mie (which alone wakes the hart, whatever
 --                mstatus.MIE), then the interrupt.
 --   WfiDisabled: wfi with the first interrupt disabled and a second enabled: the first leaves
@@ -150,8 +152,10 @@ data IrqWait = Plain | Two | Wfi | WfiDisabled deriving Eq
 --   them, and a wfi nothing can wake would hang the test. The instruction retired just before the
 --   request is random, often a multiply or divide (the instruction class an interrupt follows is
 --   covered). Without CHERI, a third of the events run in User mode, where an enabled machine
---   interrupt is taken whatever mstatus.MIE; there they are Plain or Two (no wfi in User mode,
---   whose legality depends on mstatus.TW), and an ecall returns to Machine mode afterwards.
+--   interrupt is taken whatever mstatus.MIE; there they are Plain (Two cannot hold two pending
+--   there, and no wfi in User mode, whose legality depends on mstatus.TW), and an ecall returns
+--   to Machine mode afterwards. Two, Wfi and WfiDisabled shrink as one unit: a shrunk test that
+--   lost the MIE clear would race again, one that kept a wfi but lost its wake-up would hang.
 irqEvent :: Bool -> Template
 irqEvent cheri = random $ do
   tmp     <- tmpReg
@@ -160,30 +164,32 @@ irqEvent cheri = random $ do
   global  <- frequency [(3, return True), (1, return False)]
   enabled <- frequency [(5, return True), (1, return False)]
   umode   <- if cheri then return False else frequency [(1, return True), (2, return False)]
-  kind    <- if umode then frequency [(3, return Plain), (1, return Two)]
+  kind    <- if umode then return Plain
              else frequency [(4, return Plain), (2, return Two), (2, return Wfi),
                              (1, return WfiDisabled)]
   pre     <- precede
   let mie     = unsafe_csrs_indexFromName "mie"
       mstatus = unsafe_csrs_indexFromName "mstatus"
+      mcause  = unsafe_csrs_indexFromName "mcause"
       setMie b = mconcat [li32 tmp (bit (fromInteger b)), inst $ csrrs 0 mie tmp]
       clrMie b = mconcat [li32 tmp (bit (fromInteger b)), inst $ csrrc 0 mie tmp]
       mieFor b on = if on then setMie b else clrMie b
       globalMie = inst $ if global then csrrsi 0 mstatus 8 else csrrci 0 mstatus 8
-      handler = mconcat [genAll, noShrink $ inst mret]
+      -- mcause first: RVFI carries no cause, but the register write is compared with the model,
+      -- so taking a different interrupt than the model shows even where every cause has the same
+      -- handler address (MTCC).
+      handler = mconcat [noShrink $ inst $ csrrs tmp mcause 0, genAll, noShrink $ inst mret]
       enables = case kind of
         Plain       -> mconcat [mieFor ch enabled, globalMie]
-        Two         -> mconcat [setMie ch, setMie other, globalMie]
+        Two         -> mconcat [setMie ch, setMie other, inst $ csrrci 0 mstatus 8]
         Wfi         -> mconcat [setMie ch, globalMie]
         WfiDisabled -> mconcat [clrMie ch, setMie other, globalMie]
       event = case kind of
         Plain       -> mconcat [pre, intReq ch, intBar]
-        Two         -> mconcat [pre, intReq ch, intReq other, intBar]
+        Two         -> mconcat [intReq ch, intReq other, inst $ csrrsi 0 mstatus 8, intBar]
         Wfi         -> mconcat [inst wfi, intReq ch, intBar]
         WfiDisabled -> mconcat [inst wfi, intReq ch, intReq other, intBar]
-      -- A wfi and what wakes it shrink together or not at all: a shrunk test that kept the wfi
-      -- but lost the enables or the request would sleep until the test timeout.
-      body = if kind `elem` [Wfi, WfiDisabled] then noShrink (enables <> event)
+      body = if kind `elem` [Two, Wfi, WfiDisabled] then noShrink (enables <> event)
              else noShrink enables <> event
   return $ if umode
     then mconcat [ noShrink enables, enterUMode tmp, event, handler, genAll
