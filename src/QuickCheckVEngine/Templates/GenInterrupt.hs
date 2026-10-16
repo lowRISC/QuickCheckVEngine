@@ -38,6 +38,7 @@ module QuickCheckVEngine.Templates.GenInterrupt (
 ) where
 
 import RISCV.RV32_I
+import qualified RISCV.RV32_M as M
 import RISCV.RV32_Zicsr
 import RISCV.RV32_Xcheri
 import RISCV.RV_CSRs
@@ -47,7 +48,7 @@ import QuickCheckVEngine.Template
 import QuickCheckVEngine.Templates.Utils.General
 import QuickCheckVEngine.Templates.GenAll
 import Data.Bits
-import Test.QuickCheck (choose, oneof)
+import Test.QuickCheck (Gen, choose, elements, frequency, oneof)
 
 msiFixedTest :: Template
 msiFixedTest = random $ do
@@ -101,31 +102,122 @@ msiRandTest = random $ do
                       genAll
                     ]
 
--- | The CHERI templates set the trap vector with cspecialrw, which a core without CHERI rejects as
---   an illegal instruction; such a core gets the same test with mtvec.
+-- | Interrupt tests for both flavours. A prologue points the trap vector into RAM (MTCC with
+--   CHERI, mtvec otherwise); then interrupt events follow until the test is full ('irqEvent').
+--   The interrupt lines are the DII packets: intReq raises one (3 software, 7 timer, 11 external)
+--   and keeps it raised, intBar retires a NOP and drops them all. An interrupt the hart takes is
+--   taken before that NOP, so what follows the barrier is the handler, wherever the vector
+--   points. Fast interrupts and NMI are not driven by the TestRIG bench.
 genInterruptTest :: Template
 genInterruptTest = readParams $ \p ->
-  if has_cheri (archDesc p) then msiRandTest else msiRandTestRV
+  let cheri = has_cheri (archDesc p)
+  in mconcat [ if cheri then trapVectorCheri else trapVectorRV
+             , repeatTillEnd (irqEvent cheri) ]
 
--- | 'msiRandTest' for a core without CHERI. mtvec (0x305, given by number as RV_CSRs leaves it
---   unnamed for CHERIoT) gets a vectored-mode value with a 256-byte aligned base in RAM: Ibex keeps
---   only that form (mode fixed to vectored, base[7:0] zero), and the model must take the trap to
---   the same handler. The interrupt is raised and cleared by the DII interrupt packets.
-msiRandTestRV :: Template
-msiRandTestRV = random $ do
-  tmpReg1 <- oneof [choose (1, 4), choose (11, 15)]
-  page    <- choose (0, 0x7fff :: Integer)
-  let mtvec = 0x305
-  return $ mconcat [ noShrink $ mconcat [
-                       li32 tmpReg1 (0x80000001 + page * 0x100), -- vectored, base in RAM
-                       inst $ csrrw 0 mtvec tmpReg1,
-                       inst $ csrrsi 0 (unsafe_csrs_indexFromName "mie") (1 `shiftL` 3), -- MSIE
-                       inst $ csrrsi 0 (unsafe_csrs_indexFromName "mstatus") (1 `shiftL` 3) -- MIE
-                     ],
-                     genAll,
-                     intReq 3, -- set mip[3] (Machine Software Interrupt)
-                     intBar,
-                     genAll,
-                     noShrink $ inst mret, -- return from the interrupt handler
-                     genAll
-                   ]
+-- | MTCC: a capability to a 16-byte aligned, randomised offset from PCC, as 'msiRandTest' builds.
+trapVectorCheri :: Template
+trapVectorCheri = random $ do
+  tmp1 <- tmpReg
+  tmp2 <- tmpReg
+  tmp3 <- tmpReg
+  imm  <- bits 12
+  return $ noShrink $ instSeq
+    [ auipc tmp1 0
+    , addi tmp2 0 ((imm .&. 0xFFF0) `shiftR` 4)
+    , slli tmp2 tmp2 4
+    , cincaddr tmp3 tmp1 tmp2
+    , cspecialrw 0 28 tmp3 ]
+
+-- | mtvec (0x305, by number: RV_CSRs leaves it unnamed for CHERIoT): vectored mode with a 256-byte
+--   aligned base in RAM, the only form Ibex keeps.
+trapVectorRV :: Template
+trapVectorRV = random $ do
+  tmp  <- tmpReg
+  page <- choose (0, 0x7fff :: Integer)
+  return $ noShrink $ mconcat [ li32 tmp (0x80000001 + page * 0x100), inst $ csrrw 0 0x305 tmp ]
+
+data IrqWait = Plain | Two | Wfi | WfiDisabled deriving Eq
+
+-- | One interrupt event.
+--   Plain:       one interrupt, its mie bit set or clear, mstatus.MIE set or clear.
+--   Two:         two interrupts raised together, both enabled: the hart and the model must pick
+--                the same one.
+--   Wfi:         wfi with the interrupt enabled in mie (which alone wakes the hart, whatever
+--                mstatus.MIE), then the interrupt.
+--   WfiDisabled: wfi with the first interrupt disabled and a second enabled: the first leaves
+--                the hart asleep, the second wakes it.
+--   The mie bits are set right before each wfi: the random instructions in between may clear
+--   them, and a wfi nothing can wake would hang the test. The instruction retired just before the
+--   request is random, often a multiply or divide (the instruction class an interrupt follows is
+--   covered). Without CHERI, a third of the events run in User mode, where an enabled machine
+--   interrupt is taken whatever mstatus.MIE; there they are Plain or Two (no wfi in User mode,
+--   whose legality depends on mstatus.TW), and an ecall returns to Machine mode afterwards.
+irqEvent :: Bool -> Template
+irqEvent cheri = random $ do
+  tmp     <- tmpReg
+  ch      <- elements channels
+  other   <- elements (filter (/= ch) channels)
+  global  <- frequency [(3, return True), (1, return False)]
+  enabled <- frequency [(5, return True), (1, return False)]
+  umode   <- if cheri then return False else frequency [(1, return True), (2, return False)]
+  kind    <- if umode then frequency [(3, return Plain), (1, return Two)]
+             else frequency [(4, return Plain), (2, return Two), (2, return Wfi),
+                             (1, return WfiDisabled)]
+  pre     <- precede
+  let mie     = unsafe_csrs_indexFromName "mie"
+      mstatus = unsafe_csrs_indexFromName "mstatus"
+      setMie b = mconcat [li32 tmp (bit (fromInteger b)), inst $ csrrs 0 mie tmp]
+      clrMie b = mconcat [li32 tmp (bit (fromInteger b)), inst $ csrrc 0 mie tmp]
+      mieFor b on = if on then setMie b else clrMie b
+      globalMie = inst $ if global then csrrsi 0 mstatus 8 else csrrci 0 mstatus 8
+      handler = mconcat [genAll, noShrink $ inst mret]
+      enables = case kind of
+        Plain       -> mconcat [mieFor ch enabled, globalMie]
+        Two         -> mconcat [setMie ch, setMie other, globalMie]
+        Wfi         -> mconcat [setMie ch, globalMie]
+        WfiDisabled -> mconcat [clrMie ch, setMie other, globalMie]
+      event = case kind of
+        Plain       -> mconcat [pre, intReq ch, intBar]
+        Two         -> mconcat [pre, intReq ch, intReq other, intBar]
+        Wfi         -> mconcat [inst wfi, intReq ch, intBar]
+        WfiDisabled -> mconcat [inst wfi, intReq ch, intReq other, intBar]
+      -- A wfi and what wakes it shrink together or not at all: a shrunk test that kept the wfi
+      -- but lost the enables or the request would sleep until the test timeout.
+      body = if kind `elem` [Wfi, WfiDisabled] then noShrink (enables <> event)
+             else noShrink enables <> event
+  return $ if umode
+    then mconcat [ noShrink enables, enterUMode tmp, event, handler, genAll
+                 , noShrink $ inst ecall ]
+    else mconcat [ body, handler, genAll ]
+  where channels = [3, 7, 11]
+
+-- | The instruction retired before the interrupt request.
+precede :: Gen Template
+precede = do
+  rd  <- tmpReg
+  rs1 <- tmpReg
+  rs2 <- tmpReg
+  frequency [ (3, return genAll)
+            , (2, return $ instUniform [ M.mul rd rs1 rs2, M.div rd rs1 rs2, M.divu rd rs1 rs2
+                                       , M.rem rd rs1 rs2 ])
+            , (1, return mempty) ]
+
+-- | Machine to User mode as 'genUMode' does: PMP region 0 gets the whole address space (a core
+--   with PMP denies User mode every access no region matches), mstatus.MPP := User, mepc := the
+--   auipc's address (the next instruction is the next one injected), mret. mepc (0x341), pmpcfg0
+--   (0x3a0) and pmpaddr0 (0x3b0) by number, as RV_CSRs leaves them unnamed for CHERIoT.
+enterUMode :: Integer -> Template
+enterUMode tmp = noShrink $ mconcat
+  [ li32 tmp 0xffffffff
+  , inst $ csrrw 0 0x3b0 tmp
+  , li32 tmp 0x0f
+  , inst $ csrrw 0 0x3a0 tmp
+  , li32 tmp 0x1800
+  , inst $ csrrc 0 (unsafe_csrs_indexFromName "mstatus") tmp
+  , inst $ auipc tmp 0
+  , inst $ csrrw 0 0x341 tmp
+  , inst mret ]
+
+-- | A temporary register both flavours have (x1-x4, x11-x15; CHERIoT has 16).
+tmpReg :: Gen Integer
+tmpReg = oneof [choose (1, 4), choose (11, 15)]

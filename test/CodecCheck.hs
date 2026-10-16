@@ -285,6 +285,7 @@ rv32iEntries =
      , ent "fence_tso" (E0 I.fence_tso) [] rv32i $ \_ -> "fence.tso"
      , ent "resrvd"    (E0 I.resrvd)    [] rv32i $ \_ -> "reserved"
      , ent "mret"      (E0 I.mret)      [] rv32i $ \_ -> "mret"
+     , ent "wfi"       (E0 I.wfi)       [] rv32i $ \_ -> "wfi"
      , ent "ecall"     (E0 I.ecall)     [] rv32i $ \_ -> "ecall"
      , ent "ebreak"    (E0 I.ebreak)    [] rv32i $ \_ -> "ebreak" ]
 

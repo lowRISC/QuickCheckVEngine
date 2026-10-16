@@ -88,6 +88,7 @@ module RISCV.RV32_I (
 , fence_tso
 , resrvd
 , mret
+, wfi
 -- , sret -- CHERIoT lacks privileged instructions
 -- , uret -- CHERIoT lacks privileged instructions
 , ecall
@@ -211,6 +212,11 @@ resrvd_raw       =                   "0000 0000 0000 00000 000 00000 0000000"
 resrvd           = encode resrvd_raw
 mret_raw         =                   "0011 0000 0010 00000 000 00000 1110011"
 mret             = encode mret_raw
+-- Not in rv32_i_exc: a random wfi with no interrupt enabled would sleep for good. Templates
+-- that use it raise an enabled interrupt right after it.
+wfi_raw          =                   "0001 0000 0101 00000 000 00000 1110011"
+wfi              :: Instruction
+wfi              = encode wfi_raw
 -- CHERIoT lacks privileged instructions
 -- sret_raw         =                   "0001 0000 0010 00000 000 00000 1110011"
 -- sret             = encode sret_raw
@@ -267,6 +273,7 @@ rv32_i_disass = [ add_raw    --> prettyR "add"
                 , fence_tso_raw --> "fence.tso"
                 , resrvd_raw --> "reserved"
                 , mret_raw   --> "mret"
+                , wfi_raw    --> "wfi"
                 -- , sret_raw   --> "sret" -- CHERIoT lacks privileged instructions
                 -- , uret_raw   --> "uret" -- CHERIoT lacks privileged instructions
                 , ecall_raw  --> "ecall"
@@ -338,6 +345,7 @@ rv32_i_extract = [ add_raw    --> extract_2op add_raw
 --               , fence_tso_raw --> noextract
 --               , resrvd_raw --> noextract
 --               , mret_raw   --> noextract
+--               , wfi_raw    --> noextract
 --               , sret_raw   --> noextract -- CHERIoT lacks privileged instructions
 --               , uret_raw   --> noextract -- CHERIoT lacks privileged instructions
 --               , ecall_raw  --> noextract
@@ -413,6 +421,7 @@ rv32_i_shrink = [ add_raw    --> shrink_arith
 --              , fence_tso_raw --> noshrink
                 , resrvd_raw --> shrink_illegal
                 , mret_raw   --> shrink_illegal
+                , wfi_raw    --> shrink_illegal
                 -- , sret_raw   --> shrink_illegal -- CHERIoT lacks privileged instructions
                 -- , uret_raw   --> shrink_illegal -- CHERIoT lacks privileged instructions
 --              , ecall_raw  --> noshrink
