@@ -57,6 +57,7 @@ library qcvengine-lib
                        QuickCheckVEngine.Templates.GenCSRs,
                        QuickCheckVEngine.Templates.GenCHERI,
                        QuickCheckVEngine.Templates.GenInterrupt,
+                       QuickCheckVEngine.Templates.GenPrivilege,
                        QuickCheckVEngine.Templates.GenAll,
                        QuickCheckVEngine.Templates.GenTransExec,
                        QuickCheckVEngine.Templates.GenRandomCapMod,

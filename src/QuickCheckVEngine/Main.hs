@@ -84,6 +84,7 @@ import QuickCheckVEngine.Templates.GenCHERI
 import QuickCheckVEngine.Templates.GenHPM
 import QuickCheckVEngine.Templates.GenTransExec
 import QuickCheckVEngine.Templates.GenInterrupt
+import QuickCheckVEngine.Templates.GenPrivilege
 import QuickCheckVEngine.Templates.GenUnstructured
 import QuickCheckVEngine.Instrlike
 
@@ -297,6 +298,8 @@ allTests = [
            , ("caprandom",  "Xcheri Extension Random Template",                       has_cheri,                                randomCHERITest)
            , ("caprvcrandom", "Xcheri RVC Extension Random Template",                 andPs [has_cheri, has_c],                 randomCHERIRVCTest)
            , ("interrupt",  "Interrupt Testing Template",                             const True,                               genInterruptTest)
+           -- RISC-V only: CHERIoT is M-mode only.
+           , ("umode",      "User Mode Entry, Execution and Return",                  not . has_cheri,                          T.repeatTillEnd genUMode)
            , ("all",        "All Verification",                                       const True,                               genAll)
            , ("random",     "Random Template",                                        const True,                               randomTest)
            , ("unstructured", "Unstructured random instruction bit Template",         const True,                               T.repeatTillEnd gen_unstructured)

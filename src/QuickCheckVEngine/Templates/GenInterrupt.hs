@@ -41,11 +41,13 @@ import RISCV.RV32_I
 import RISCV.RV32_Zicsr
 import RISCV.RV32_Xcheri
 import RISCV.RV_CSRs
+import RISCV.ArchDesc
 import QuickCheckVEngine.Instrlike
 import QuickCheckVEngine.Template
 import QuickCheckVEngine.Templates.Utils.General
 import QuickCheckVEngine.Templates.GenAll
 import Data.Bits
+import Test.QuickCheck (choose, oneof)
 
 msiFixedTest :: Template
 msiFixedTest = random $ do
@@ -99,5 +101,31 @@ msiRandTest = random $ do
                       genAll
                     ]
 
+-- | The CHERI templates set the trap vector with cspecialrw, which a core without CHERI rejects as
+--   an illegal instruction; such a core gets the same test with mtvec.
 genInterruptTest :: Template
-genInterruptTest = msiRandTest
+genInterruptTest = readParams $ \p ->
+  if has_cheri (archDesc p) then msiRandTest else msiRandTestRV
+
+-- | 'msiRandTest' for a core without CHERI. mtvec (0x305, given by number as RV_CSRs leaves it
+--   unnamed for CHERIoT) gets a vectored-mode value with a 256-byte aligned base in RAM: Ibex keeps
+--   only that form (mode fixed to vectored, base[7:0] zero), and the model must take the trap to
+--   the same handler. The interrupt is raised and cleared by the DII interrupt packets.
+msiRandTestRV :: Template
+msiRandTestRV = random $ do
+  tmpReg1 <- oneof [choose (1, 4), choose (11, 15)]
+  page    <- choose (0, 0x7fff :: Integer)
+  let mtvec = 0x305
+  return $ mconcat [ noShrink $ mconcat [
+                       li32 tmpReg1 (0x80000001 + page * 0x100), -- vectored, base in RAM
+                       inst $ csrrw 0 mtvec tmpReg1,
+                       inst $ csrrsi 0 (unsafe_csrs_indexFromName "mie") (1 `shiftL` 3), -- MSIE
+                       inst $ csrrsi 0 (unsafe_csrs_indexFromName "mstatus") (1 `shiftL` 3) -- MIE
+                     ],
+                     genAll,
+                     intReq 3, -- set mip[3] (Machine Software Interrupt)
+                     intBar,
+                     genAll,
+                     noShrink $ inst mret, -- return from the interrupt handler
+                     genAll
+                   ]
