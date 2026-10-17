@@ -156,6 +156,14 @@ data IrqWait = Plain | Two | Wfi | WfiDisabled deriving Eq
 --   there, and no wfi in User mode, whose legality depends on mstatus.TW), and an ecall returns
 --   to Machine mode afterwards. Two, Wfi and WfiDisabled shrink as one unit: a shrunk test that
 --   lost the MIE clear would race again, one that kept a wfi but lost its wake-up would hang.
+--
+--   Privilege: every event starts with an ecall, which traps into Machine mode from either mode, so
+--   the event knows where it runs whatever the random instructions before it did (genAll has mret,
+--   and CSR writes to mstatus). And only an event whose interrupt is taken gets the handler and
+--   its mret: the mret of an interrupt that was not taken returns to mstatus.MPP, User after any
+--   earlier mret or ecall from User mode. Without both, a test drifted into User mode while the
+--   template assumed Machine mode, the mie writes of a later Wfi event trapped, and the wfi slept
+--   for good (2026-10-16, testrig-riscv-interrupt: 43 "No dii_ack" aborts).
 irqEvent :: Bool -> Template
 irqEvent cheri = random $ do
   tmp     <- tmpReg
@@ -191,10 +199,20 @@ irqEvent cheri = random $ do
         WfiDisabled -> mconcat [inst wfi, intReq ch, intReq other, intBar]
       body = if kind `elem` [Two, Wfi, WfiDisabled] then noShrink (enables <> event)
              else noShrink enables <> event
+      -- Whether the hart takes the interrupt. Machine interrupts are always enabled in User mode;
+      -- in Machine mode only with mstatus.MIE. Two sets MIE after raising both; a wfi wakes on
+      -- the enabled one whatever MIE, but traps only with it.
+      taken = case kind of
+        Plain       -> enabled && (global || umode)
+        Two         -> True
+        Wfi         -> global
+        WfiDisabled -> global
+      after = if taken then handler else mempty
+      toMachine = noShrink $ inst ecall
   return $ if umode
-    then mconcat [ noShrink enables, enterUMode tmp, event, handler, genAll
+    then mconcat [ toMachine, noShrink enables, enterUMode tmp, event, after, genAll
                  , noShrink $ inst ecall ]
-    else mconcat [ body, handler, genAll ]
+    else mconcat [ toMachine, body, after, genAll ]
   where channels = [3, 7, 11]
 
 -- | The instruction retired before the interrupt request.
