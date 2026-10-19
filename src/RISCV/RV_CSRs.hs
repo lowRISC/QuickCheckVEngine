@@ -204,6 +204,9 @@ csrs_map = -- User Trap Setup
       --      [ (0x8C0, "uccsr")   -- CHERIoT lacks capability CSRs
       --      , (0x9C0, "sccsr")   -- CHERIoT lacks capability CSRs
       --      , (0xBC0, "mccsr") ] -- CHERIoT lacks capability CSRs
+        ++ -- CHERIoT stack high-water mark (CHERIoT ISA, Zstackhwm); illegal without CHERIoT
+           [ (0xBC1, "mshwm")
+           , (0xBC2, "mshwmb") ]
         ++ map (\x -> (x, "mhpmevent" ++ show (x - (head mhpmevent_csr_indices) + 3)))
                mhpmevent_csr_indices
         -- TODO Debug/Trace Registers (shared with Debug Mode)

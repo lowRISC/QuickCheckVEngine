@@ -94,13 +94,17 @@ disableHPMCounterM tmpReg idx = csrBitSetOrClear False mcounteren idx tmpReg
 --   than S
 enableHPMCounterS :: Integer -> HPMCounterIdx -> Template
 enableHPMCounterS tmpReg idx = csrBitSetOrClear True mcounteren idx tmpReg
-  where mcounteren = unsafe_csrs_indexFromName "scounteren"
+  -- By number: RV_CSRs leaves the S-mode CSRs unnamed (CHERIoT and Ibex lack S-mode), and a name
+  -- lookup would throw. On a core without S-mode the access is illegal, which both models check.
+  where mcounteren = 0x106 -- scounteren
 
 -- | Disable the provided HPM counter's accessibility from less privileged modes
 --   than S
 disableHPMCounterS :: Integer -> HPMCounterIdx -> Template
 disableHPMCounterS tmpReg idx = csrBitSetOrClear False mcounteren idx tmpReg
-  where mcounteren = unsafe_csrs_indexFromName "scounteren"
+  -- By number: RV_CSRs leaves the S-mode CSRs unnamed (CHERIoT and Ibex lack S-mode), and a name
+  -- lookup would throw. On a core without S-mode the access is illegal, which both models check.
+  where mcounteren = 0x106 -- scounteren
 
 -- | Read the provided HPM counter into the provided destination register
 readHPMCounter :: Integer -> HPMCounterIdx -> Template
