@@ -41,6 +41,7 @@ module QuickCheckVEngine.Templates.GenConstrainedCapMod (
   genRandomCHERIoTConstrainedCSetAddrTest,
   genRandomCHERIoTConstrainedCSetBoundsExactTest,
   genRandomCHERIoTConstrainedCSetBoundsImmTest,
+  genRandomCHERIoTConstrainedCSetBoundsRoundDownTest,
   genRandomCHERIoTConstrainedCSetBoundsTest,
   genRandomCHERIoTConstrainedCSealTest,
   genRandomCHERIoTConstrainedCUnsealTest
@@ -148,6 +149,17 @@ constrained_csetbounds cmem ca0 a2 a3 a4 t0 = random $ do
                      , sub a4 a4 t0
                      , remu a2 a3 a4
                      , csetbounds ca0 ca0 a2 ] <>
+             post cmem ca0 a2
+
+constrained_csetboundsrounddown :: Integer -> Integer -> Integer -> Integer -> Integer -> Integer -> Template
+constrained_csetboundsrounddown cmem ca0 a2 a3 a4 t0 = random $ do
+    return $ prep cmem ca0 a2 <>
+             prepReg32 a3 <>
+             instSeq [ cgettop a4 ca0
+                     , cgetaddr t0 ca0
+                     , sub a4 a4 t0
+                     , remu a2 a3 a4
+                     , csetboundsrounddown ca0 ca0 a2 ] <>
              post cmem ca0 a2
 
 constrained_cseal :: Integer -> Integer -> Integer -> Integer -> Integer -> Integer -> Template
@@ -273,6 +285,17 @@ genRandomCHERIoTConstrainedCSetBoundsTest = readParams $ \param -> random $ do
   t0  <- src_high
   return $ constrained_csetbounds cmem ca0 a2 a3 a4 t0
 
+genRandomCHERIoTConstrainedCSetBoundsRoundDownTest :: Template
+genRandomCHERIoTConstrainedCSetBoundsRoundDownTest = readParams $ \param -> random $ do
+  let arch = archDesc param
+  cmem <- pure 1
+  ca0 <- src_low
+  a2  <- src_high
+  a3  <- src_high
+  a4  <- src_high
+  t0  <- src_high
+  return $ constrained_csetboundsrounddown cmem ca0 a2 a3 a4 t0
+
 genRandomCHERIoTConstrainedCSealTest :: Template
 genRandomCHERIoTConstrainedCSealTest = readParams $ \param -> random $ do
   let arch = archDesc param
@@ -317,6 +340,7 @@ genRandomCHERIoTConstrainedCapModTest = readParams $ \param -> random $ do
   return $ dist [ (5, constrained_cincaddr cmem ca0 a2 a3 a4 )
                 , (5, constrained_csetaddr cmem ca0 a2 a3 a4)
                 , (5, constrained_csetbounds cmem ca0 a2 a3 a4 t0 )
+                , (5, constrained_csetboundsrounddown cmem ca0 a2 a3 a4 t0 )
                 , (1, constrained_cseal cmem ca0 ca1 a2 a3 a4)
                 , (5, constrained_cunseal cmem ca0 ca1 a2)
                 , (1, constrained_candperm cmem ca0 a2)

@@ -79,6 +79,7 @@ module RISCV.RV32_Xcheri (
 , cincaddrimm            -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
 , csetbounds
 , csetboundsexact
+, csetboundsrounddown
 , csetboundsimmediate
 , ccleartag
 -- , cbuildcap -- CHERIoT lacks cbuildcap instr
@@ -185,6 +186,8 @@ csetbounds_raw                     =                                        "000
 csetbounds cd cs1 rs2              = encode csetbounds_raw                           rs2      cs1          cd
 csetboundsexact_raw                =                                        "0001001 rs2[4:0] cs1[4:0] 000 cd[4:0] 1011011"
 csetboundsexact cd cs1 rs2         = encode csetboundsexact_raw                      rs2      cs1          cd
+csetboundsrounddown_raw            =                                        "0001010 rs2[4:0] cs1[4:0] 000 cd[4:0] 1011011"
+csetboundsrounddown cd cs1 rs2     = encode csetboundsrounddown_raw                  rs2      cs1          cd
 csetboundsimmediate_raw            =                                        "imm[11:0] cs1[4:0] 010 cd[4:0] 1011011"
 csetboundsimmediate cd cs1 imm     = encode csetboundsimmediate_raw          imm       cs1          cd
 ccleartag_raw                      =                                        "1111111 01011 cs1[4:0] 000 cd[4:0] 1011011"
@@ -396,6 +399,7 @@ rv32_xcheri_disass = [ cgetperm_raw                    --> prettyR_2op "cgetperm
                      , cincaddr_raw                    --> prettyR "cincaddr"      -- CHERIoT replaces cincoffset with cincaddr
                      , csetbounds_raw                  --> prettyR "csetbounds"
                      , csetboundsexact_raw             --> prettyR "csetboundsexact"
+                     , csetboundsrounddown_raw         --> prettyR "csetboundsrounddown"
                     --  , cbuildcap_raw                   --> prettyR "cbuildcap" -- CHERIoT lacks cbuildcap instr
                     --  , ccopytype_raw                   --> prettyR "ccopytype" -- CHERIoT lacks ccopytype instr
                     --  , ccseal_raw                      --> prettyR "ccseal" -- CHERIoT lacks ccseal instr
@@ -466,6 +470,7 @@ rv32_xcheri_extract = [ cgetperm_raw                    --> extract_1op cgetperm
                       , cincaddr_raw                    --> extract_2op cincaddr_raw      -- CHERIoT replaces cincoffset with cincaddr
                       , csetbounds_raw                  --> extract_2op csetbounds_raw
                       , csetboundsexact_raw             --> extract_2op csetboundsexact_raw
+                      , csetboundsrounddown_raw         --> extract_2op csetboundsrounddown_raw
                       -- , cbuildcap_raw                   --> extract_2op cbuildcap_raw -- CHERIoT lacks cbuildcap instr
                       -- , ccopytype_raw                   --> extract_2op ccopytype_raw -- CHERIoT lacks ccopytype instr
                       -- , ccseal_raw                      --> extract_2op ccseal_raw -- CHERIoT lacks ccseal instr
@@ -599,6 +604,7 @@ rv32_xcheri_shrink = [ cgetperm_raw                    --> shrink_cgetperm
                      , cincaddr_raw                    --> shrink_capint    -- CHERIoT replaces cincoffset with cincaddr
                      , csetbounds_raw                  --> shrink_capint
                      , csetboundsexact_raw             --> shrink_capint
+                     , csetboundsrounddown_raw         --> shrink_capint
                     --  , cbuildcap_raw                   --> shrink_capcap -- CHERIoT lacks cbuildcap instr
                     --  , ccopytype_raw                   --> shrink_capcap -- CHERIoT lacks ccopytype instr
                     --  , ccseal_raw                      --> shrink_capcap -- CHERIoT lacks ccseal instr
@@ -656,6 +662,7 @@ rv32_xcheri_arithmetic src1 src2 imm dest =
   , cincaddr            dest src1 src2    -- CHERIoT replaces cincoffset with cincaddr
   , csetbounds          dest src1 src2
   , csetboundsexact     dest src1 src2
+  , csetboundsrounddown dest src1 src2
   , csetboundsimmediate dest src1      imm
   -- , cincoffsetimmediate dest src1      imm -- CHERIoT replaces cincoffsetimm(ediate) with cincaddrimm
   , cincaddrimm         dest src1      imm
