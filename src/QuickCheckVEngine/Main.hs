@@ -68,6 +68,7 @@ import QuickCheckVEngine.RVFI_DII
 import qualified QuickCheckVEngine.Template as T
 import QuickCheckVEngine.Test
 import QuickCheckVEngine.Stats
+import QuickCheckVEngine.Templates.GenCapRep
 import QuickCheckVEngine.Templates.GenConstrainedCapMod
 import QuickCheckVEngine.Templates.GenAll
 import QuickCheckVEngine.Templates.GenArithmetic
@@ -245,6 +246,7 @@ commandOpts argv =
 allTests :: [(String, String, ArchDesc -> Bool, T.Template)]
 allTests = [
              ("arith",      "Arithmetic Verification",                                const True,                               T.repeatTillEnd gen_rv32_i_arithmetic)
+           , ("cap_rep",    "CHERIoT capability representation edge-cases",           has_cheri,                                T.repeatTillEnd genRandomCHERIoTCapRepTest)
            , ("constrained_test",   "Constrained CHERIoT testing",                    has_cheri,                                T.repeatTillEnd genRandomCHERIoTConstrainedCapModTest)
            , ("random_test",   "Random CHERIoT testing",                              has_cheri,                                T.repeatTillEnd genRandomCHERIoTCapModTest)
           -- CSC: Capability Speculation Constraint
