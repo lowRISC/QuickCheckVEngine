@@ -36,6 +36,7 @@
 module QuickCheckVEngine.Templates.GenRandomCapMod (
   genRandomCHERIoTCapModTest,
   genRandomCHERIoTCSetBoundsExactTest,
+  genRandomCHERIoTCSetBoundsRoundDownTest,
   genRandomCHERIoTCSetBoundsImmTest,
   genRandomCHERIoTCIncAddrImmTest,
   genRandomCHERIoTCIncAddrTest,
@@ -90,6 +91,10 @@ random_csetboundsexact :: Integer -> Integer -> Integer -> Template
 random_csetboundsexact ca0 ca1 a2 = random $ do
     return $ prepReg32 a2 <> instSeq [ csetboundsexact ca0 ca1 a2 ]
 
+random_csetboundsrounddown :: Integer -> Integer -> Integer -> Template
+random_csetboundsrounddown ca0 ca1 a2 = random $ do
+    return $ prepReg32 a2 <> instSeq [ csetboundsrounddown ca0 ca1 a2 ]
+
 random_csetboundsimm :: Integer -> Integer -> Integer -> Template
 random_csetboundsimm ca0 ca1 imm = random $ do
     return $ instSeq [ csetboundsimmediate ca0 ca1 imm ]
@@ -105,6 +110,14 @@ genRandomCHERIoTCSetBoundsExactTest = readParams $ \param -> random $ do
   ca1 <- src
   a2  <- src
   return $ random_csetboundsexact ca0 ca1 a2
+
+genRandomCHERIoTCSetBoundsRoundDownTest :: Template
+genRandomCHERIoTCSetBoundsRoundDownTest = readParams $ \param -> random $ do
+  let arch = archDesc param
+  ca0 <- src
+  ca1 <- src
+  a2  <- src
+  return $ random_csetboundsrounddown ca0 ca1 a2
 
 genRandomCHERIoTCSetBoundsImmTest :: Template
 genRandomCHERIoTCSetBoundsImmTest = readParams $ \param -> random $ do
@@ -187,6 +200,7 @@ genRandomCHERIoTCapModTest = readParams $ \param -> random $ do
                   (1, random_csetaddr ca0 ca1 a2),
                   (1, random_csetbounds ca0 ca1 a2),
                   (1, random_csetboundsexact ca0 ca1 a2),
+                  (1, random_csetboundsrounddown ca0 ca1 a2),
                   (1, random_csetboundsimm ca0 ca1 imm),
                   (1, random_cunseal ca0 ca1 ca2)
                 ]

@@ -317,7 +317,8 @@ xcheriEntries =
      | (n, e) <- [ ("candperm", E3 X.candperm), ("csetaddr", E3 X.csetaddr)
                  , ("csethigh", E3 X.csethigh), ("cincaddr", E3 X.cincaddr)
                  , ("csetbounds", E3 X.csetbounds)
-                 , ("csetboundsexact", E3 X.csetboundsexact) ] ]
+                 , ("csetboundsexact", E3 X.csetboundsexact)
+                 , ("csetboundsrounddown", E3 X.csetboundsrounddown) ] ]
   ++ [ ent n e ["rd", "cs1", "cs2"] xcheri $ \v -> ops n [xr v "rd", xr v "cs1", xr v "cs2"]
      | (n, e) <- [("ctestsubset", E3 X.ctestsubset), ("csetequalexact", E3 X.csetequalexact)] ]
   ++ [ ent n e ["cd", "cs1", "imm"] xcheri $ \v -> ops n [xr v "cd", xr v "cs1", un v "imm"]
