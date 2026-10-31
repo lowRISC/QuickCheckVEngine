@@ -43,7 +43,8 @@ module QuickCheckVEngine.Templates.GenCHERI (
   genCHERIarithmetic,
   genCHERImisc,
   genCHERIcontrol,
-  genCHERIoTCounterCSR
+  genCHERIoTCounterCSR,
+  tagCacheTest
 ) where
 
 import Test.QuickCheck

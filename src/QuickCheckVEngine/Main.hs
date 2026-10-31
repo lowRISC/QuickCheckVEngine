@@ -290,6 +290,7 @@ allTests = [
            , ("capmisc",    "Xcheri Extension Capability Miscellaneous Verification", has_cheri,                                T.repeatTillEnd genCHERImisc)
            , ("capcontrol", "Xcheri Extension Capability Control Flow Verification",  has_cheri,                                T.repeatTillEnd genCHERIcontrol)
            , ("capcache",   "Xcheri Extension Cache Verification",                    has_cheri,                                T.repeatTillEnd gen_rv32_Xcheri_cache)
+           , ("tagcache",   "Xcheri Capability Tag Memory Verification",             has_cheri,                                tagCacheTest)
              -- has_cheri, not has_icsr: CHERIoT arch strings (e.g. rv32emcZifencei_Xcheriot) name no
              -- Zicsr. Which CSRs are reached is decided by --csr-include-regex/--csr-exclude-regex
              -- (guardCSR), as for the csrr in randomCHERITest.

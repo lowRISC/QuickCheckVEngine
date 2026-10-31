@@ -131,22 +131,28 @@ makeShortCap = random $ do
 
 legalCapLoad :: Integer -> Integer -> Template
 legalCapLoad addrReg targetReg = random $ do
-  tmpReg <- src
-  return $ instSeq [ andi addrReg addrReg 0xff
-                   , lui tmpReg 0x40004
+  tmpReg <- exclude [addrReg] src
+  -- Form 0x80008000 as an integer, then install it as the cursor of the tagged
+  -- capability supplied by the implementation.  Integer arithmetic on addrReg
+  -- would clear its tag and turn every supposedly legal CLC into a tag fault.
+  return $ instSeq [ lui tmpReg 0x40004
                    , slli tmpReg tmpReg 1
-                   , cincaddr addrReg addrReg tmpReg
+                   , csetaddr addrReg addrReg tmpReg
                   --  , cload targetReg addrReg 0x17 -- CHERIoT lacks mem loads w/explicit addr, replace lc.ddc (0x17) with clc
                    , clc targetReg addrReg 0]        -- CHERIoT lacks mem loads w/explicit addr, replace lc.ddc (0x17) with clc
 
 legalCapStore :: Integer -> Template
 legalCapStore addrReg = random $ do
-  tmpReg  <- src
-  dataReg <- dest
-  return $ instSeq [ andi addrReg addrReg 0xff
-                   , lui tmpReg 0x40004
+  tmpReg  <- exclude [addrReg] src
+  -- If dataReg were tmpReg, constructing the address would clear the value's
+  -- tag; x0 would store the untagged null capability. Either way the tag-memory test would no
+  -- longer store a tagged capability.
+  dataReg <- exclude [0, tmpReg] dest
+  -- Keep addrReg a capability: CSetAddr preserves its tag for this
+  -- representable address, unlike the integer AND/ADD sequence used for LW/SW.
+  return $ instSeq [ lui tmpReg 0x40004
                    , slli tmpReg tmpReg 1
-                   , cincaddr addrReg addrReg tmpReg
+                   , csetaddr addrReg addrReg tmpReg
                   --  , cstore dataReg addrReg 0x4 -- CHERIoT lacks mem stores w/explicit addr, replace sc.ddc (0x04) with csc
                    , csc dataReg addrReg 0]        -- CHERIoT lacks mem stores w/explicit addr, replace sc.ddc (0x04) with csc
 

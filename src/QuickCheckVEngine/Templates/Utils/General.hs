@@ -263,8 +263,8 @@ writeData addr ws = li64 1 addr <> mconcat (map writeWord ws)
 --   "RVFI-DII legal" address into an arbitrary register
 legalLoad :: Template
 legalLoad = random $ do
-  tmpReg    <- src
   addrReg   <- src
+  tmpReg    <- exclude [addrReg] src
   targetReg <- dest
   return $ instSeq [ andi addrReg addrReg 0xff
                    , lui tmpReg 0x40004
@@ -276,14 +276,14 @@ legalLoad = random $ do
 --   register to an arbitrary "RVFI-DII legal" address
 legalStore :: Template
 legalStore = random $ do
-  tmpReg  <- src
   addrReg <- src
+  tmpReg  <- exclude [addrReg] src
   dataReg <- dest
   return $ instSeq [ andi addrReg addrReg 0xff
                    , lui tmpReg 0x40004
                    , slli tmpReg tmpReg 1
                    , add addrReg tmpReg addrReg ]
-           <> storeOp dataReg addrReg
+           <> storeOp addrReg dataReg
 
 -- | 'surroundWithMemAccess' wraps a 'Template' by performing a store operation
 --   before it, and following it by a load operation to the same
